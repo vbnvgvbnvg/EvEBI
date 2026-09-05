@@ -39,9 +39,9 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
   - [x] OpenAPI generator compiling generated ESI client.
   - [x] Git repository configured with `.gitignore` and `.gitattributes`.
 
-- [ ] **Phase 2: Local Infrastructure Setup**
-  - [ ] Configure `docker-compose.yml` for PostgreSQL 16 and RabbitMQ 3 (with Management UI).
-  - [ ] Verify local database connectivity and RabbitMQ dashboard.
+- [x] **Phase 2: Local Infrastructure Setup**
+  - [x] Configure `docker-compose.yml` for PostgreSQL 16 and RabbitMQ 3 (with Management UI).
+  - [x] Verify local database connectivity and RabbitMQ dashboard.
 
 - [ ] **Phase 3: Worker Service Persistence & Migrations**
   - [ ] Configure Liquibase master changelog and initial schema for `market_orders`.

@@ -12,3 +12,8 @@ target/
 
 # vscode
 .vscode
+
+# Environment & Secrets
+.env
+*.env
+!.env.example
