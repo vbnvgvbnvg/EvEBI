@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: eve-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-eve_bi}
+      POSTGRES_USER: ${POSTGRES_USER:-eve_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve_password}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eve_user} -d ${POSTGRES_DB:-eve_bi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eve-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: eve-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-eve_user}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-eve_password}
+    ports:
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"    # AMQP broker port
+      - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"  # Management UI & HTTP API
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - eve-network
+
+volumes:
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+networks:
+  eve-network:
+    driver: bridge
