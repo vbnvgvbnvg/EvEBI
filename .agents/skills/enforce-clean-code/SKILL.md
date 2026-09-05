@@ -21,24 +21,44 @@ Perform this audit first. If any rule is violated, refactor the code before runn
 ### Gate 2: Code Generation & Compilation
 - Compiles parent and all child modules, verifying OpenAPI generation and QueryDSL Q-class annotation processing:
 ```bash
+# macOS / Linux:
 ./mvnw clean compile -DskipTests
+
+# Windows 11:
+mvnw.cmd clean compile -DskipTests
 ```
 - Verify zero compilation errors across all modules.
 
 ### Gate 3: Test Suite Execution
 - Run unit and integration tests across the project:
 ```bash
+# macOS / Linux:
 ./mvnw test
+
+# Windows 11:
+mvnw.cmd test
 ```
 - Verify all tests pass with zero failures and zero errors.
 
-### Gate 4: Git Status & Resource Check
+### Gate 4: SonarCloud Quality Gate Verification
+- When `SONAR_TOKEN` is configured, execute Sonar analysis with synchronous Quality Gate evaluation:
+```bash
+# macOS / Linux:
+./mvnw clean verify sonar:sonar
+
+# Windows 11:
+mvnw.cmd clean verify sonar:sonar
+```
+- Verify the scanner finishes with `QUALITY GATE STATUS: PASSED` and `BUILD SUCCESS`.
+
+### Gate 5: Git Status & Resource Check
 - Run `git status` to verify:
   - No unintended temporary files, IDE folders (`.idea`), or build artifacts (`target/`) are unstaged.
-  - No unexpected formatting or CRLF line-ending mutations were introduced.
+  - No unexpected formatting or CRLF line-ending mutations were introduced (LF only).
 
 # Exit Criteria
 - Self-review checklist passes completely.
-- `./mvnw clean compile -DskipTests` exits with `BUILD SUCCESS`.
-- `./mvnw test` exits with `BUILD SUCCESS`.
+- Code generation & compilation exits with `BUILD SUCCESS`.
+- Test suite exits with `BUILD SUCCESS`.
+- SonarCloud Quality Gate passes (`QUALITY GATE STATUS: PASSED`).
 - No compilation warnings or broken multi-module references remain.
