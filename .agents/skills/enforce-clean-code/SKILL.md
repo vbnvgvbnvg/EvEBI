@@ -6,7 +6,12 @@ description: Run compilation checks, code generation verification, test suite ex
 # Intent
 Use this skill after creating or modifying any Java class, `pom.xml`, Liquibase changelog, or application property file to ensure all changes pass strict architectural standards, type checking, and compilation before concluding your response.
 
-# Verification Pipeline
+# Verification Pipeline Modes
+
+- **Incremental Mode (Default for Step-by-Step Edits):** Execute Gates 1, 2, 3, and 5 (~3 seconds execution time). Keeps development snappy without network round-trips to SonarCloud.
+- **Milestone Mode (Feature / PR Readiness):** Execute all gates, including Gate 4 (SonarCloud Quality Gate), before declaring an entire feature or implementation phase complete.
+
+---
 
 ### Gate 1: Code Review & Hygiene Audit (Self-Review Checklist)
 Perform this audit first. If any rule is violated, refactor the code before running Maven commands:
@@ -29,7 +34,7 @@ mvnw.cmd clean compile -DskipTests
 ```
 - Verify zero compilation errors across all modules.
 
-### Gate 3: Test Suite Execution
+### Gate 3: Test Suite Execution & Coverage Check
 - Run unit and integration tests across the project:
 ```bash
 # macOS / Linux:
@@ -39,15 +44,16 @@ mvnw.cmd clean compile -DskipTests
 mvnw.cmd test
 ```
 - Verify all tests pass with zero failures and zero errors.
+- **Coverage Inspection:** Verify generated JaCoCo report at `<module>/target/site/jacoco/index.html` (or `jacoco.csv`) confirms expected line and branch coverage.
 
-### Gate 4: SonarCloud Quality Gate Verification
-- When `SONAR_TOKEN` is configured, execute Sonar analysis with synchronous Quality Gate evaluation:
+### Gate 4: SonarCloud Quality Gate (Milestone / PR Gate)
+- Run on feature completion or when preparing for PR integration (requires `SONAR_TOKEN`):
 ```bash
 # macOS / Linux:
-./mvnw clean verify sonar:sonar
+./mvnw verify sonar:sonar
 
 # Windows 11:
-mvnw.cmd clean verify sonar:sonar
+mvnw.cmd verify sonar:sonar
 ```
 - Verify the scanner finishes with `QUALITY GATE STATUS: PASSED` and `BUILD SUCCESS`.
 
@@ -57,8 +63,12 @@ mvnw.cmd clean verify sonar:sonar
   - No unexpected formatting or CRLF line-ending mutations were introduced (LF only).
 
 # Exit Criteria
-- Self-review checklist passes completely.
-- Code generation & compilation exits with `BUILD SUCCESS`.
-- Test suite exits with `BUILD SUCCESS`.
-- SonarCloud Quality Gate passes (`QUALITY GATE STATUS: PASSED`).
-- No compilation warnings or broken multi-module references remain.
+### Incremental Steps:
+- Gate 1 self-review checklist passes completely.
+- Gate 2 compilation exits with `BUILD SUCCESS`.
+- Gate 3 test suite exits with `BUILD SUCCESS` (JaCoCo report verified).
+- Gate 5 git hygiene check passes.
+
+### Milestone / PR Completion:
+- All incremental exit criteria pass.
+- Gate 4 SonarCloud Quality Gate passes with `QUALITY GATE STATUS: PASSED`.

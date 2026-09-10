@@ -1,0 +1,72 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: worker-service
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}
+    username: ${POSTGRES_USER:eve_user}
+    password: ${POSTGRES_PASSWORD:eve_password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      pool-name: WorkerHikariPool
+      minimum-idle: 2
+      maximum-pool-size: 10
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+
+  liquibase:
+    enabled: true
+    change-log: classpath:/db/changelog/db.changelog-master.xml
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_AMQP_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:eve_user}
+    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 50
+        concurrency: 1
+        max-concurrency: 5
+
+eve:
+  market:
+    exchange: ${EVE_MARKET_EXCHANGE:eve.market.orders}
+    queue: ${EVE_MARKET_QUEUE:eve.market.orders.worker}
+    routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders.#}
+    batch-size: ${EVE_MARKET_BATCH_SIZE:500}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState, db, rabbit
