@@ -12,6 +12,7 @@ import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
@@ -28,7 +29,9 @@ class RabbitMqConfigTest {
                 "test.exchange",
                 "test.queue",
                 "test.orders.#",
-                500
+                500,
+                Duration.ofHours(2),
+                1000000
         );
         config = new RabbitMqConfig(properties);
     }
@@ -60,6 +63,9 @@ class RabbitMqConfigTest {
         Queue queue = config.marketOrdersQueue();
         assertThat(queue.getName()).isEqualTo("test.queue");
         assertThat(queue.isDurable()).isTrue();
+        assertThat(queue.getArguments().get("x-message-ttl")).isEqualTo(7200000);
+        assertThat(queue.getArguments().get("x-max-length")).isEqualTo(1000000);
+        assertThat(queue.getArguments().get("x-overflow")).isEqualTo("drop-head");
 
         Binding binding = config.marketOrdersBinding(queue, exchange);
         assertThat(binding.getDestination()).isEqualTo("test.queue");

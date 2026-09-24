@@ -1,0 +1,47 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: ingestion-poller
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_AMQP_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:eve_user}
+    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+
+eve:
+  poller:
+    esi:
+      base-url: ${EVE_ESI_BASE_URL:https://esi.evetech.net/latest}
+      user-agent: ${EVE_ESI_USER_AGENT:EveBI-IngestionPoller/1.0.0 (https://github.com/serbentd/EvEBI)}
+      connect-timeout: ${EVE_ESI_CONNECT_TIMEOUT:10s}
+      read-timeout: ${EVE_ESI_READ_TIMEOUT:30s}
+      max-in-memory-size: ${EVE_ESI_MAX_IN_MEMORY_SIZE:16MB}
+      min-error-remain-threshold: ${EVE_ESI_ERROR_THRESHOLD:20}
+    scheduling:
+      regions:
+        - ${EVE_POLLER_REGION_ID:10000002}
+      initial-delay: ${EVE_POLLER_INITIAL_DELAY:PT5S}
+      fixed-rate: ${EVE_POLLER_FIXED_RATE:PT1H}
+    amqp:
+      exchange: ${EVE_MARKET_EXCHANGE:eve.market.orders}
+      routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState, rabbit

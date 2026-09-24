@@ -53,23 +53,41 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
   - [x] Comprehensive testing: Unit, Repository Slice (H2/Liquibase), and Integration tests (in-memory, Docker-free).
   - [x] Configure Spring Boot Actuator health checks (PostgreSQL & RabbitMQ liveness/readiness).
 
-- [ ] **Phase 4: Ingestion Poller Implementation**
-  - [ ] Configure `WebClient` bean with custom User-Agent (mandatory for ESI).
-  - [ ] Implement `MarketOrderPoller` with region scheduling (starting with The Forge: `10000002`).
-  - [ ] Integrate Resilience4j RateLimiter and error budget interceptors.
-  - [ ] Publish order batches to RabbitMQ exchange.
+- [x] **Phase 4: Ingestion Poller Implementation**
+  - [x] Configure `WebClient` bean with custom User-Agent (mandatory for ESI).
+  - [x] Implement `MarketOrderPoller` with region scheduling (starting with The Forge: `10000002`).
+  - [x] Integrate Resilience4j RateLimiter and error budget interceptors.
+  - [x] Publish order batches to RabbitMQ exchange.
+  - [ ] **Universe-Wide Expansion & Dynamic Discovery:**
+    - [ ] Integrate ESI Universe API (`GET /universe/regions/`) to dynamically discover market regions.
+    - [ ] Filter out non-market space (wormholes `11000000+`, abyssal space `12000000+`).
+    - [ ] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
 
 - [ ] **Phase 5: Analytical Star Schema & Historical Batch ETL**
-  - [ ] Configure Spring Batch metadata and analytical star schema tables via Liquibase:
-    - Conformed Dimensions: `dim_date`, `dim_item`, `dim_region`, `dim_station`.
-    - Historical Trends Fact: `fact_daily_market_history` (OHLC prices, VWAP, total turnover, order count).
-    - Market Depth Fact: `fact_order_book_snapshot` (intraday order depth, liquidity, bid/ask spreads).
-  - [ ] Implement daily Spring Batch aggregation jobs with idempotent chunked processing.
-  - [ ] Implement historical price rollup and moving average computations.
+  - [ ] **Dimension Modeling & Static Data Seeding:**
+    - [ ] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_item`, `dim_region`, `dim_station`.
+    - [ ] Implement dimension data seeding (enriching item names, categories, solar systems, and station names from CCP SDE / ESI Universe endpoints).
+  - [ ] **Analytical Fact Tables:**
+    - [ ] Historical Trends Fact: `fact_daily_market_history` (OHLC prices, VWAP, total turnover, order count).
+    - [ ] Market Depth Fact: `fact_order_book_snapshot` (intraday order depth, liquidity, bid/ask spreads).
+  - [ ] **Spring Batch Pipeline:**
+    - [ ] Configure Spring Batch metadata repository in PostgreSQL.
+    - [ ] Implement daily Spring Batch aggregation jobs with idempotent chunked processing.
+    - [ ] Implement historical price rollup and moving average computations.
 
-- [ ] **Phase 6: Infrastructure, CI & Containerized Integration Testing (Deferred / Low-Priority)**
-  - [ ] Configure optional Testcontainers profile for real-broker RabbitMQ and true PostgreSQL integration tests (requiring Docker / OrbStack).
-  - [ ] Set up CI/CD pipeline (GitHub Actions) with automated containerized service test execution.
+- [ ] **Phase 6: Security Hardening, Containerized Testing & CI/CD**
+  - [ ] **Database & Broker Least-Privilege Hardening:**
+    - [ ] Configure least-privilege PostgreSQL roles via Liquibase (`worker_dml`, `liquibase_ddl`, `powerbi_reader` read-only).
+    - [ ] Configure RabbitMQ dedicated virtual host (`/eve_market`) with scoped producer write-only and consumer read-only access.
+    - [ ] Enforce SSL/TLS transport encryption (`sslmode=require` for Postgres, `amqps://` for RabbitMQ).
+  - [ ] **Management Endpoint & Actuator Security:**
+    - [ ] Configure Spring Security to protect sensitive Actuator endpoints while preserving unauthenticated access for container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`).
+  - [ ] **Supply Chain & Secrets Management:**
+    - [ ] Externalize all production secrets and enforce zero plain-text credential commits.
+    - [ ] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.
+  - [ ] **Containerized Integration Testing & CI/CD:**
+    - [ ] Configure optional Testcontainers profile for real-broker RabbitMQ (with auth/vhost) and true PostgreSQL integration tests (requiring Docker / OrbStack).
+    - [ ] Set up CI/CD pipeline (GitHub Actions) with automated containerized service test execution and SonarCloud quality gates.
 
 - [ ] **Phase 7: BI & Reporting Layer (Power BI Cloud & Multi-Model Architecture)**
   - [ ] **Authoring & Local Development:**

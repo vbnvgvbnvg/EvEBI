@@ -53,6 +53,8 @@ eve:
     queue: ${EVE_MARKET_QUEUE:eve.market.orders.worker}
     routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders.#}
     batch-size: ${EVE_MARKET_BATCH_SIZE:500}
+    queue-ttl: ${EVE_MARKET_QUEUE_TTL:2h}
+    queue-max-length: ${EVE_MARKET_QUEUE_MAX_LENGTH:1000000}
 
 management:
   endpoints:

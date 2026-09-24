@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: ingestion-poller-test
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+
+eve:
+  poller:
+    esi:
+      base-url: http://localhost:8089
+      user-agent: EvEBI-TestClient/1.0
+      connect-timeout: 2s
+      read-timeout: 5s
+      max-in-memory-size: 1MB
+      min-error-remain-threshold: 20
+    scheduling:
+      regions:
+        - 10000002
+      initial-delay: PT1H
+      fixed-rate: PT1H
+    amqp:
+      exchange: test.market.orders
+      routing-key: test.market.orders.raw
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  health:
+    rabbit:
+      enabled: false
