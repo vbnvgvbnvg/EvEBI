@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -44,7 +45,7 @@ class OrderPersistenceServiceTest {
     @BeforeEach
     void setUp() {
         // Configure chunk size of 2 for testing partitioning boundaries
-        properties = new MarketProperties("eve.market.orders", "eve.market.orders.worker", "eve.market.orders.#", 2);
+        properties = new MarketProperties("eve.market.orders", "eve.market.orders.worker", "eve.market.orders.#", 2, Duration.ofHours(2), 1000000);
         orderPersistenceService = new OrderPersistenceService(marketOrderRepository, entityManager, properties);
     }
 
