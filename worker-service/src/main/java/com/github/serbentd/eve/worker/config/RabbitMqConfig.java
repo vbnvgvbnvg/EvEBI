@@ -56,7 +56,11 @@ public class RabbitMqConfig {
      */
     @Bean
     public Queue marketOrdersQueue() {
-        return QueueBuilder.durable(properties.queue()).build();
+        return QueueBuilder.durable(properties.queue())
+                .ttl((int) properties.queueTtl().toMillis())
+                .maxLength(properties.queueMaxLength())
+                .overflow(QueueBuilder.Overflow.dropHead)
+                .build();
     }
 
     /**

@@ -27,6 +27,8 @@ eve:
     queue: test.queue
     routing-key: test.routingKey
     batch-size: 500
+    queue-ttl: 2h
+    queue-max-length: 1000000
 
 management:
   endpoints:

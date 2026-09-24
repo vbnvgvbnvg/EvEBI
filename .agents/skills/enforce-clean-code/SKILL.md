@@ -15,9 +15,10 @@ Use this skill after creating or modifying any Java class, `pom.xml`, Liquibase 
 
 ### Gate 1: Code Review & Hygiene Audit (Self-Review Checklist)
 Perform this audit first. If any rule is violated, refactor the code before running Maven commands:
-- [ ] **No Field Injection:** Verify all dependencies are injected via constructor (`final` fields). No `@Autowired` on fields.
+- [ ] **No Field Injection:** Verify all dependencies are injected via constructor (`final` fields). No `@Autowired` on fields in production OR test classes (test classes use `spring.test.constructor.autowire.mode = all`).
 - [ ] **Immutable Records:** Verify all RabbitMQ message payloads, DTOs, and event structures use Java `record` instead of mutable POJOs.
-- [ ] **No Magic Values:** Verify that queue names, region IDs, cron schedules, and thresholds are sourced from configuration properties or named constants.
+- [ ] **No Magic Values:** Verify that queue names, region IDs, cron schedules, and thresholds are sourced from configuration properties or named constants (including domain IDs in test fixtures).
+- [ ] **Docker-Free Default Tests:** Verify `./mvnw test` runs completely in-memory with H2 PostgreSQL mode and disabled AMQP listeners.
 - [ ] **Transaction Scope:** Verify network calls (HTTP/AMQP) are NOT enclosed inside `@Transactional` database methods.
 - [ ] **Jakarta Imports:** Confirm no deprecated `javax.*` packages are imported.
 - [ ] **Logging Hygiene:** Verify SLF4J is used with parameter syntax (`{}`). Ensure no `System.out` or `printStackTrace()` exists.
