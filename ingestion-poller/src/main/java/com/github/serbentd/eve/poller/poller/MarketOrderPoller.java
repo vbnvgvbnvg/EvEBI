@@ -5,6 +5,7 @@ import com.evepipeline.esi.model.MarketsRegionIdOrdersGetInner;
 import com.github.serbentd.eve.poller.config.PollerProperties;
 import com.github.serbentd.eve.poller.event.MarketOrderEvent;
 import com.github.serbentd.eve.poller.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.poller.service.MarketRegionDiscoveryService;
 import com.github.serbentd.eve.poller.service.OrderEventPublisher;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -34,22 +35,29 @@ public class MarketOrderPoller {
     private final MarketApi marketApi;
     private final OrderEventPublisher publisher;
     private final PollerProperties properties;
+    private final MarketRegionDiscoveryService discoveryService;
 
-    public MarketOrderPoller(MarketApi marketApi, OrderEventPublisher publisher, PollerProperties properties) {
+    public MarketOrderPoller(
+            MarketApi marketApi,
+            OrderEventPublisher publisher,
+            PollerProperties properties,
+            MarketRegionDiscoveryService discoveryService
+    ) {
         this.marketApi = marketApi;
         this.publisher = publisher;
         this.properties = properties;
+        this.discoveryService = discoveryService;
     }
 
     /**
-     * Scheduled entry point to poll all configured market regions.
+     * Scheduled entry point to poll all active market regions.
      */
     @Scheduled(
             initialDelayString = "${eve.poller.scheduling.initial-delay}",
             fixedRateString = "${eve.poller.scheduling.fixed-rate}"
     )
     public void pollAllRegions() {
-        List<Long> regions = properties.scheduling().regions();
+        List<Long> regions = discoveryService.getMarketRegions();
         log.info("Starting scheduled market order polling across {} region(s)", regions.size());
 
         for (Long regionId : regions) {
@@ -103,7 +111,7 @@ public class MarketOrderPoller {
 
     private ResponseEntity<List<MarketsRegionIdOrdersGetInner>> fetchPage(Long regionId, int page) {
         return marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                ORDER_TYPE_ALL, regionId, null, page, null, null, null, null, null
+                ORDER_TYPE_ALL, regionId, properties.discovery().compatibilityDate(), page, null, null, null, null, null
         ).block();
     }
 

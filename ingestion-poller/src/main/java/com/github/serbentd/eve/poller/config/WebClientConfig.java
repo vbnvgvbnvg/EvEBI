@@ -2,6 +2,7 @@ package com.github.serbentd.eve.poller.config;
 
 import com.evepipeline.esi.ApiClient;
 import com.evepipeline.esi.api.MarketApi;
+import com.evepipeline.esi.api.UniverseApi;
 import com.github.serbentd.eve.poller.client.EsiErrorBudgetFilter;
 import io.netty.channel.ChannelOption;
 import org.springframework.context.annotation.Bean;
@@ -67,5 +68,13 @@ public class WebClientConfig {
     @Bean
     public MarketApi marketApi(ApiClient esiApiClient) {
         return new MarketApi(esiApiClient);
+    }
+
+    /**
+     * OpenAPI generated Universe API client for universe regions and static coordinate lookups.
+     */
+    @Bean
+    public UniverseApi universeApi(ApiClient esiApiClient) {
+        return new UniverseApi(esiApiClient);
     }
 }
