@@ -5,6 +5,7 @@ import com.evepipeline.esi.model.MarketsRegionIdOrdersGetInner;
 import com.github.serbentd.eve.poller.config.PollerProperties;
 import com.github.serbentd.eve.poller.event.MarketOrderEvent;
 import com.github.serbentd.eve.poller.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.poller.service.MarketRegionDiscoveryService;
 import com.github.serbentd.eve.poller.service.OrderEventPublisher;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -38,12 +40,16 @@ class MarketOrderPollerTest {
     private static final Long DOMAIN_REGION_ID = 10000043L;
     private static final Long JITA_SYSTEM_ID = 30000142L;
     private static final Long JITA_4_4_STATION_ID = 60003760L;
+    private static final LocalDate COMPATIBILITY_DATE = LocalDate.of(2020, 1, 1);
 
     @Mock
     private MarketApi marketApi;
 
     @Mock
     private OrderEventPublisher publisher;
+
+    @Mock
+    private MarketRegionDiscoveryService discoveryService;
 
     private PollerProperties properties;
     private MarketOrderPoller poller;
@@ -67,8 +73,15 @@ class MarketOrderPollerTest {
                 "test.market.orders",
                 "test.market.orders.raw"
         );
-        properties = new PollerProperties(esi, scheduling, amqp);
-        poller = new MarketOrderPoller(marketApi, publisher, properties);
+        PollerProperties.DiscoveryProperties discovery = new PollerProperties.DiscoveryProperties(
+                false,
+                10000000L,
+                11000000L,
+                Duration.ofHours(24),
+                COMPATIBILITY_DATE
+        );
+        properties = new PollerProperties(esi, scheduling, amqp, discovery);
+        poller = new MarketOrderPoller(marketApi, publisher, properties, discoveryService);
     }
 
     @Test
@@ -80,8 +93,9 @@ class MarketOrderPollerTest {
                 .header("X-Pages", "1")
                 .body(List.of(order1, order2));
 
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID));
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         poller.pollAllRegions();
@@ -135,12 +149,13 @@ class MarketOrderPollerTest {
                 .header("X-Pages", "2")
                 .body(List.of(order3));
 
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID));
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(2), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(2), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page2Response));
 
         poller.pollAllRegions();
@@ -170,8 +185,9 @@ class MarketOrderPollerTest {
                 .header("X-Pages", "not-a-number")
                 .body(List.of(order));
 
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID));
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         poller.pollAllRegions();
@@ -188,8 +204,9 @@ class MarketOrderPollerTest {
 
     @Test
     void pollAllRegions_whenApiThrowsException_shouldCatchAndNotCrashScheduler() {
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID));
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.error(new RuntimeException("ESI network failure")));
 
         assertThatCode(() -> poller.pollAllRegions()).doesNotThrowAnyException();
@@ -207,19 +224,21 @@ class MarketOrderPollerTest {
                         Duration.ofHours(1),
                         Duration.ofHours(1)
                 ),
-                properties.amqp()
+                properties.amqp(),
+                properties.discovery()
         );
-        MarketOrderPoller multiRegionPoller = new MarketOrderPoller(marketApi, publisher, multiRegionProperties);
+        MarketOrderPoller multiRegionPoller = new MarketOrderPoller(marketApi, publisher, multiRegionProperties, discoveryService);
 
         MarketsRegionIdOrdersGetInner forgeOrder = createSampleOrder(1001L, 34L, 15.5, 50L);
         MarketsRegionIdOrdersGetInner domainOrder = createSampleOrder(2001L, 34L, 14.0, 80L);
 
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID, DOMAIN_REGION_ID));
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(ResponseEntity.ok().header("X-Pages", "1").body(List.of(forgeOrder))));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(DOMAIN_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(DOMAIN_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(ResponseEntity.ok().header("X-Pages", "1").body(List.of(domainOrder))));
 
         multiRegionPoller.pollAllRegions();
@@ -237,7 +256,7 @@ class MarketOrderPollerTest {
     @Test
     void pollRegion_whenPage1ResponseIsNull_shouldLogWarningAndReturnEarly() {
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.empty());
 
         poller.pollRegion(THE_FORGE_REGION_ID);
@@ -266,19 +285,19 @@ class MarketOrderPollerTest {
                 .body(List.of(order4));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(2), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(2), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.empty());
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(3), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(3), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page3Response));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(4), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(4), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page4Response));
 
         poller.pollRegion(THE_FORGE_REGION_ID);
@@ -300,7 +319,7 @@ class MarketOrderPollerTest {
                 .body(null);
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         poller.pollRegion(THE_FORGE_REGION_ID);
@@ -323,7 +342,7 @@ class MarketOrderPollerTest {
                 .body(List.of(order));
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         poller.pollRegion(THE_FORGE_REGION_ID);
@@ -345,7 +364,7 @@ class MarketOrderPollerTest {
                 .body(List.of());
 
         when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
-                eq("all"), eq(THE_FORGE_REGION_ID), isNull(), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
         )).thenReturn(Mono.just(page1Response));
 
         poller.pollRegion(THE_FORGE_REGION_ID);

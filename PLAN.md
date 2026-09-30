@@ -58,10 +58,10 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
   - [x] Implement `MarketOrderPoller` with region scheduling (starting with The Forge: `10000002`).
   - [x] Integrate Resilience4j RateLimiter and error budget interceptors.
   - [x] Publish order batches to RabbitMQ exchange.
-  - [ ] **Universe-Wide Expansion & Dynamic Discovery:**
-    - [ ] Integrate ESI Universe API (`GET /universe/regions/`) to dynamically discover market regions.
-    - [ ] Filter out non-market space (wormholes `11000000+`, abyssal space `12000000+`).
-    - [ ] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
+  - [x] **Universe-Wide Expansion & Dynamic Discovery:**
+    - [x] Integrate ESI Universe API (`GET /universe/regions/`) to dynamically discover market regions.
+    - [x] Filter out non-market space (wormholes `11000000+`, abyssal space `12000000+`).
+    - [x] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
 
 - [ ] **Phase 5: Analytical Star Schema & Historical Batch ETL**
   - [ ] **Dimension Modeling & Static Data Seeding:**

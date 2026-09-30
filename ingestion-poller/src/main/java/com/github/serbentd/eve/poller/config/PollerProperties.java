@@ -10,6 +10,7 @@ import org.springframework.util.unit.DataSize;
 import org.springframework.validation.annotation.Validated;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -21,7 +22,8 @@ import java.util.List;
 public record PollerProperties(
         @NotNull @Valid EsiProperties esi,
         @NotNull @Valid SchedulingProperties scheduling,
-        @NotNull @Valid AmqpProperties amqp
+        @NotNull @Valid AmqpProperties amqp,
+        @NotNull @Valid DiscoveryProperties discovery
 ) {
 
     /**
@@ -67,6 +69,24 @@ public record PollerProperties(
     public record AmqpProperties(
             @NotBlank String exchange,
             @NotBlank String routingKey
+    ) {
+    }
+
+    /**
+     * Universe dynamic region discovery configuration.
+     *
+     * @param enabled           whether to dynamically discover market regions from ESI Universe API
+     * @param minRegionId       minimum valid market region ID boundary
+     * @param maxRegionId       maximum valid market region ID boundary (excludes wormholes and abyss)
+     * @param refreshRate       interval between periodic market region discovery refreshes
+     * @param compatibilityDate ESI compatibility date header value
+     */
+    public record DiscoveryProperties(
+            boolean enabled,
+            @NotNull @Positive Long minRegionId,
+            @NotNull @Positive Long maxRegionId,
+            @NotNull Duration refreshRate,
+            @NotNull LocalDate compatibilityDate
     ) {
     }
 }

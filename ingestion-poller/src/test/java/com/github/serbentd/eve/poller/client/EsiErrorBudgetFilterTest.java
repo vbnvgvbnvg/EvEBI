@@ -43,7 +43,14 @@ class EsiErrorBudgetFilterTest {
                 "eve.market.orders",
                 "eve.market.orders.raw"
         );
-        PollerProperties properties = new PollerProperties(esi, scheduling, amqp);
+        PollerProperties.DiscoveryProperties discovery = new PollerProperties.DiscoveryProperties(
+                false,
+                10000000L,
+                11000000L,
+                Duration.ofHours(24),
+                java.time.LocalDate.of(2020, 1, 1)
+        );
+        PollerProperties properties = new PollerProperties(esi, scheduling, amqp, discovery);
         filter = new EsiErrorBudgetFilter(properties);
     }
 

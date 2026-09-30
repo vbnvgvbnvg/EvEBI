@@ -52,7 +52,14 @@ class OrderEventPublisherTest {
                 TEST_EXCHANGE,
                 TEST_ROUTING_KEY
         );
-        PollerProperties properties = new PollerProperties(esi, scheduling, amqp);
+        PollerProperties.DiscoveryProperties discovery = new PollerProperties.DiscoveryProperties(
+                false,
+                10000000L,
+                11000000L,
+                Duration.ofHours(24),
+                java.time.LocalDate.of(2020, 1, 1)
+        );
+        PollerProperties properties = new PollerProperties(esi, scheduling, amqp, discovery);
         publisher = new OrderEventPublisher(rabbitTemplate, properties);
     }
 

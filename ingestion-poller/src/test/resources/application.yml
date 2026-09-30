@@ -23,6 +23,12 @@ eve:
     amqp:
       exchange: test.market.orders
       routing-key: test.market.orders.raw
+    discovery:
+      enabled: false
+      min-region-id: 10000000
+      max-region-id: 11000000
+      refresh-rate: PT24H
+      compatibility-date: 2020-01-01
 
 management:
   endpoints:
