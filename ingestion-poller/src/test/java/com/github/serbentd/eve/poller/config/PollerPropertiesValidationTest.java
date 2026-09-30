@@ -47,7 +47,8 @@ class PollerPropertiesValidationTest {
         PollerProperties properties = new PollerProperties(
                 invalidEsi,
                 createValidSchedulingProperties(),
-                createValidAmqpProperties()
+                createValidAmqpProperties(),
+                createValidDiscoveryProperties()
         );
 
         Set<ConstraintViolation<PollerProperties>> violations = validator.validate(properties);
@@ -75,7 +76,8 @@ class PollerPropertiesValidationTest {
         PollerProperties properties = new PollerProperties(
                 createValidEsiProperties(),
                 invalidScheduling,
-                createValidAmqpProperties()
+                createValidAmqpProperties(),
+                createValidDiscoveryProperties()
         );
 
         Set<ConstraintViolation<PollerProperties>> violations = validator.validate(properties);
@@ -99,7 +101,8 @@ class PollerPropertiesValidationTest {
         PollerProperties properties = new PollerProperties(
                 createValidEsiProperties(),
                 createValidSchedulingProperties(),
-                invalidAmqp
+                invalidAmqp,
+                createValidDiscoveryProperties()
         );
 
         Set<ConstraintViolation<PollerProperties>> violations = validator.validate(properties);
@@ -114,22 +117,52 @@ class PollerPropertiesValidationTest {
     }
 
     @Test
-    void validate_whenTopLevelRecordsNull_shouldDetectConstraintViolations() {
-        PollerProperties properties = new PollerProperties(null, null, null);
+    void validate_whenDiscoveryPropertiesInvalid_shouldDetectConstraintViolations() {
+        PollerProperties.DiscoveryProperties invalidDiscovery = new PollerProperties.DiscoveryProperties(
+                true,
+                -1L,
+                null,
+                null,
+                null
+        );
+        PollerProperties properties = new PollerProperties(
+                createValidEsiProperties(),
+                createValidSchedulingProperties(),
+                createValidAmqpProperties(),
+                invalidDiscovery
+        );
 
         Set<ConstraintViolation<PollerProperties>> violations = validator.validate(properties);
         Set<String> violatedPaths = violations.stream()
                 .map(v -> v.getPropertyPath().toString())
                 .collect(Collectors.toSet());
 
-        assertThat(violatedPaths).contains("esi", "scheduling", "amqp");
+        assertThat(violatedPaths).contains(
+                "discovery.minRegionId",
+                "discovery.maxRegionId",
+                "discovery.refreshRate",
+                "discovery.compatibilityDate"
+        );
+    }
+
+    @Test
+    void validate_whenTopLevelRecordsNull_shouldDetectConstraintViolations() {
+        PollerProperties properties = new PollerProperties(null, null, null, null);
+
+        Set<ConstraintViolation<PollerProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains("esi", "scheduling", "amqp", "discovery");
     }
 
     private PollerProperties createValidProperties() {
         return new PollerProperties(
                 createValidEsiProperties(),
                 createValidSchedulingProperties(),
-                createValidAmqpProperties()
+                createValidAmqpProperties(),
+                createValidDiscoveryProperties()
         );
     }
 
@@ -156,6 +189,16 @@ class PollerPropertiesValidationTest {
         return new PollerProperties.AmqpProperties(
                 "eve.market.orders",
                 "eve.market.orders.raw"
+        );
+    }
+
+    private PollerProperties.DiscoveryProperties createValidDiscoveryProperties() {
+        return new PollerProperties.DiscoveryProperties(
+                true,
+                10000000L,
+                11000000L,
+                Duration.ofHours(24),
+                java.time.LocalDate.of(2020, 1, 1)
         );
     }
 }

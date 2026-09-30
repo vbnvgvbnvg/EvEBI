@@ -28,6 +28,12 @@ eve:
     amqp:
       exchange: ${EVE_MARKET_EXCHANGE:eve.market.orders}
       routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders}
+    discovery:
+      enabled: ${EVE_POLLER_DISCOVERY_ENABLED:true}
+      min-region-id: ${EVE_POLLER_MIN_REGION_ID:10000000}
+      max-region-id: ${EVE_POLLER_MAX_REGION_ID:11000000}
+      refresh-rate: ${EVE_POLLER_DISCOVERY_REFRESH_RATE:PT24H}
+      compatibility-date: ${EVE_POLLER_COMPATIBILITY_DATE:2020-01-01}
 
 management:
   endpoints:
