@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Staging Source Layer -->
+    <include file="db/changelog/domain/staging/market_orders.xml"/>
+
+    <!-- Conformed Dimensions -->
+    <include file="db/changelog/domain/dimensions/dim_date.xml"/>
+    <include file="db/changelog/domain/dimensions/dim_time.xml"/>
+    <include file="db/changelog/domain/dimensions/dim_region.xml"/>
+    <include file="db/changelog/domain/dimensions/dim_item.xml"/>
+    <include file="db/changelog/domain/dimensions/dim_station.xml"/>
+
+    <!-- Baseline Curated Dimension Seed -->
+    <include file="db/changelog/data/baseline_seed.xml"/>
+
+    <!-- Analytical Fact Tables -->
+    <include file="db/changelog/domain/facts/fact_market_daily_summary.xml"/>
+    <include file="db/changelog/domain/facts/fact_order_book_liquidity.xml"/>
+
+</databaseChangeLog>

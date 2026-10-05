@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Staging Table: Market Orders (Operational Source) -->
+    <changeSet id="staging_market_orders-001-create-table" author="serbentd">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="market_orders"/>
+            </not>
+        </preConditions>
+        <comment>Create operational market_orders staging table for ETL batch readers</comment>
+        <createTable tableName="market_orders">
+            <column name="order_id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="pk_market_orders" nullable="false"/>
+            </column>
+            <column name="type_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="region_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="system_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="price" type="NUMERIC(18, 2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="volume_remain" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="volume_total" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_volume" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="duration" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_buy_order" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="order_range" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(16)" defaultValue="ACTIVE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="snapshot_id" type="VARCHAR(64)"/>
+            <column name="issued" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="polled_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="finished_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes for Batch Reader -->
+    <changeSet id="staging_market_orders-002-create-indexes" author="serbentd">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists indexName="idx_market_orders_batch_read" tableName="market_orders"/>
+            </not>
+        </preConditions>
+        <comment>Create indexes for batch ETL extraction</comment>
+        <createIndex tableName="market_orders" indexName="idx_market_orders_batch_read">
+            <column name="region_id"/>
+            <column name="type_id"/>
+            <column name="issued"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

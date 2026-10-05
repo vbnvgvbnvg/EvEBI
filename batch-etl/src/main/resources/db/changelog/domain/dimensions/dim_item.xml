@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Conformed Item Dimension Table -->
+    <changeSet id="dim_item-001-create-table" author="serbentd">
+        <comment>Create conformed item dimension table</comment>
+        <createTable tableName="dim_item">
+            <column name="type_id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="pk_dim_item" nullable="false"/>
+            </column>
+            <column name="type_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="group_id" type="BIGINT"/>
+            <column name="group_name" type="VARCHAR(128)"/>
+            <column name="category_id" type="BIGINT"/>
+            <column name="category_name" type="VARCHAR(128)"/>
+            <column name="market_group_id" type="BIGINT"/>
+            <column name="volume" type="NUMERIC(18, 4)"/>
+            <column name="packaged_volume" type="NUMERIC(18, 4)"/>
+            <column name="portion_size" type="INTEGER"/>
+            <column name="is_published" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes -->
+    <changeSet id="dim_item-002-create-indexes" author="serbentd">
+        <comment>Create indexes for item filtering and joins</comment>
+        <createIndex tableName="dim_item" indexName="idx_dim_item_name">
+            <column name="type_name"/>
+        </createIndex>
+        <createIndex tableName="dim_item" indexName="idx_dim_item_group">
+            <column name="group_id"/>
+        </createIndex>
+        <createIndex tableName="dim_item" indexName="idx_dim_item_category">
+            <column name="category_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 3. Documentation Remarks -->
+    <changeSet id="dim_item-003-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for dim_item</comment>
+        <setTableRemarks tableName="dim_item"
+                         remarks="Conformed item dimension representing EVE Online items, ships, modules, and commodities"/>
+        <setColumnRemarks tableName="dim_item" columnName="type_id"
+                          remarks="EVE natural type ID from CCP invTypes / ESI Universe endpoints"/>
+        <setColumnRemarks tableName="dim_item" columnName="type_name"
+                          remarks="Official item name (e.g. Tritanium, Rifter, PLEX)"/>
+        <setColumnRemarks tableName="dim_item" columnName="group_id"
+                          remarks="Item group identifier (e.g. 18 for Mineral)"/>
+        <setColumnRemarks tableName="dim_item" columnName="group_name"
+                          remarks="Item group name (e.g. Mineral, Cruiser, Frigate)"/>
+        <setColumnRemarks tableName="dim_item" columnName="category_id"
+                          remarks="Top-level item category ID (e.g. 6 for Ship, 4 for Material)"/>
+        <setColumnRemarks tableName="dim_item" columnName="category_name"
+                          remarks="Top-level item category name"/>
+        <setColumnRemarks tableName="dim_item" columnName="market_group_id"
+                          remarks="In-game market browser tree grouping ID"/>
+        <setColumnRemarks tableName="dim_item" columnName="volume"
+                          remarks="Assembled/raw cargo volume in cubic meters (m3)"/>
+        <setColumnRemarks tableName="dim_item" columnName="packaged_volume"
+                          remarks="Repackaged volume for transport in cubic meters (m3)"/>
+        <setColumnRemarks tableName="dim_item" columnName="portion_size"
+                          remarks="Batch trade/reprocess unit size"/>
+        <setColumnRemarks tableName="dim_item" columnName="is_published"
+                          remarks="Flag indicating whether item is publicly tradeable and visible in client"/>
+        <setColumnRemarks tableName="dim_item" columnName="created_at"
+                          remarks="Timestamp when this item record was first inserted"/>
+        <setColumnRemarks tableName="dim_item" columnName="updated_at"
+                          remarks="Timestamp when this item record was last synchronized"/>
+    </changeSet>
+
+</databaseChangeLog>
