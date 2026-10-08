@@ -77,7 +77,7 @@ public class DateDimensionService {
         int quarter = ((month - 1) / 3) + 1;
         int weekOfYear = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         DayOfWeek dayOfWeek = date.getDayOfWeek();
-        boolean isWeekend = (dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY);
+        boolean isWeekend = (dayOfWeek.equals(DayOfWeek.SATURDAY) || dayOfWeek.equals(DayOfWeek.SUNDAY));
 
         return DimDateEntity.builder()
                 .dateId(dateId)
