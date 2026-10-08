@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Conformed Time Dimension Table (1,440 rows for 24 hours x 60 minutes) -->
+    <changeSet id="dim_time-001-create-table" author="serbentd">
+        <comment>Create conformed time-of-day dimension table for clock slicing and EVE prime-time analysis</comment>
+        <createTable tableName="dim_time">
+            <column name="time_id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="pk_dim_time" nullable="false"/>
+            </column>
+            <column name="time_value" type="TIME">
+                <constraints unique="true" uniqueConstraintName="uq_dim_time_time_value" nullable="false"/>
+            </column>
+            <column name="hour_24" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="hour_12" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="minute_of_hour" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_formatted_24" type="VARCHAR(5)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_formatted_12" type="VARCHAR(8)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="am_pm" type="VARCHAR(2)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="day_part" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eve_time_bucket" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes -->
+    <changeSet id="dim_time-002-create-indexes" author="serbentd">
+        <comment>Create performance index on eve_time_bucket for market depth slicing</comment>
+        <createIndex tableName="dim_time" indexName="idx_dim_time_bucket">
+            <column name="eve_time_bucket"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 3. Documentation Remarks -->
+    <changeSet id="dim_time-003-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for dim_time</comment>
+        <setTableRemarks tableName="dim_time"
+                         remarks="Conformed time-of-day dimension representing all 1,440 minutes in a 24-hour UTC day"/>
+        <setColumnRemarks tableName="dim_time" columnName="time_id"
+                          remarks="HHmm integer key (e.g. 1830 for 18:30 UTC)"/>
+        <setColumnRemarks tableName="dim_time" columnName="time_value"
+                          remarks="Standard SQL TIME value (e.g. 18:30:00)"/>
+        <setColumnRemarks tableName="dim_time" columnName="hour_24"
+                          remarks="24-hour format hour (0 to 23)"/>
+        <setColumnRemarks tableName="dim_time" columnName="hour_12"
+                          remarks="12-hour format hour (1 to 12)"/>
+        <setColumnRemarks tableName="dim_time" columnName="minute_of_hour"
+                          remarks="Minute of the hour (0 to 59)"/>
+        <setColumnRemarks tableName="dim_time" columnName="time_formatted_24"
+                          remarks="Formatted 24-hour time string (e.g. 18:30)"/>
+        <setColumnRemarks tableName="dim_time" columnName="time_formatted_12"
+                          remarks="Formatted 12-hour time string (e.g. 06:30 PM)"/>
+        <setColumnRemarks tableName="dim_time" columnName="am_pm"
+                          remarks="AM or PM indicator"/>
+        <setColumnRemarks tableName="dim_time" columnName="day_part"
+                          remarks="General time of day: Night, Morning, Afternoon, Evening"/>
+        <setColumnRemarks tableName="dim_time" columnName="eve_time_bucket"
+                          remarks="EVE player timezone bucket: EU_PRIME, US_PRIME, AU_ASIA_TIME, DOWNTIME_WINDOW, OFF_PEAK"/>
+    </changeSet>
+
+</databaseChangeLog>

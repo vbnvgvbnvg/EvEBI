@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Order Book Liquidity Periodic Snapshot Fact Table -->
+    <changeSet id="fact_order_book_liquidity-001-create-table" author="serbentd">
+        <comment>Create conformed order book liquidity periodic fact table</comment>
+        <createTable tableName="fact_order_book_liquidity">
+            <column name="liquidity_fact_id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_fact_order_book_liquidity" nullable="false"/>
+            </column>
+            <column name="date_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="time_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="location_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="type_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="best_bid" type="NUMERIC(18, 4)"/>
+            <column name="best_ask" type="NUMERIC(18, 4)"/>
+            <column name="spread" type="NUMERIC(18, 4)"/>
+            <column name="buy_volume" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sell_volume" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="buy_orders_count" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sell_orders_count" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Unique Grain Constraint -->
+    <changeSet id="fact_order_book_liquidity-002-unique-grain" author="serbentd">
+        <comment>Enforce unique grain at date_id + time_id + location_id + type_id</comment>
+        <addUniqueConstraint tableName="fact_order_book_liquidity"
+                             columnNames="date_id, time_id, location_id, type_id"
+                             constraintName="uk_fact_liquidity_grain"/>
+    </changeSet>
+
+    <!-- 3. Foreign Key Constraints -->
+    <changeSet id="fact_order_book_liquidity-003-foreign-keys" author="serbentd">
+        <comment>Establish star-schema foreign keys to conformed dimensions</comment>
+        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+                                 baseColumnNames="date_id"
+                                 constraintName="fk_fact_liquidity_date"
+                                 referencedTableName="dim_date"
+                                 referencedColumnNames="date_id"/>
+        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+                                 baseColumnNames="time_id"
+                                 constraintName="fk_fact_liquidity_time"
+                                 referencedTableName="dim_time"
+                                 referencedColumnNames="time_id"/>
+        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+                                 baseColumnNames="location_id"
+                                 constraintName="fk_fact_liquidity_station"
+                                 referencedTableName="dim_station"
+                                 referencedColumnNames="station_id"/>
+        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+                                 baseColumnNames="type_id"
+                                 constraintName="fk_fact_liquidity_item"
+                                 referencedTableName="dim_item"
+                                 referencedColumnNames="type_id"/>
+    </changeSet>
+
+    <!-- 4. Analytical Performance Indexes -->
+    <changeSet id="fact_order_book_liquidity-004-indexes" author="serbentd">
+        <comment>Create indexing for station and item order depth time-series lookups</comment>
+        <createIndex tableName="fact_order_book_liquidity" indexName="idx_fact_liquidity_location_item">
+            <column name="location_id"/>
+            <column name="type_id"/>
+            <column name="date_id"/>
+            <column name="time_id"/>
+        </createIndex>
+        <createIndex tableName="fact_order_book_liquidity" indexName="idx_fact_liquidity_item_date_time">
+            <column name="type_id"/>
+            <column name="date_id"/>
+            <column name="time_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 5. Documentation Remarks -->
+    <changeSet id="fact_order_book_liquidity-005-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for fact_order_book_liquidity</comment>
+        <setTableRemarks tableName="fact_order_book_liquidity"
+                         remarks="High-frequency periodic snapshot fact table recording order book liquidity and spread depth per station/citadel"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="liquidity_fact_id"
+                          remarks="Surrogate primary key for periodic liquidity records"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="date_id"
+                          remarks="Surrogate key referencing dim_date (YYYYMMDD)"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="time_id"
+                          remarks="Surrogate key referencing dim_time (HHmm)"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="location_id"
+                          remarks="Conformed station or Upwell citadel ID referencing dim_station"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="type_id"
+                          remarks="Conformed item type ID referencing dim_item"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="best_bid"
+                          remarks="Highest active buy price (bid) at snapshot moment"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="best_ask"
+                          remarks="Lowest active sell price (ask) at snapshot moment"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="spread"
+                          remarks="Absolute spread (best_ask - best_bid)"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="buy_volume"
+                          remarks="Total quantity demanded on the buy side"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="sell_volume"
+                          remarks="Total quantity supplied on the sell side"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="buy_orders_count"
+                          remarks="Number of active buy orders"/>
+        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="sell_orders_count"
+                          remarks="Number of active sell orders"/>
+    </changeSet>
+
+</databaseChangeLog>

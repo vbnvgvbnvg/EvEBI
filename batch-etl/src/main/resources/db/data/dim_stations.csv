@@ -1,0 +1,6 @@
+station_id,station_name,solar_system_id,solar_system_name,region_id,security_status,security_class,is_structure,created_at,updated_at
+60003760,"Jita IV - Moon 4 - Caldari Navy Assembly Plant",30000142,Jita,10000002,0.95,HIGH_SEC,false,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+60008494,"Amarr VIII (Oris) - Emperor Family Academy",30002187,Amarr,10000043,1.00,HIGH_SEC,false,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+60011866,"Dodixie IX - Moon 20 - Federation Navy Assembly Plant",30002659,Dodixie,10000032,0.87,HIGH_SEC,false,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+60004588,"Rens VI - Moon 8 - Brutor Tribe Treasury",30002510,Rens,10000030,0.89,HIGH_SEC,false,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+60005686,"Hek VIII - Moon 12 - Boundless Creation Factory",30002053,Hek,10000042,0.55,HIGH_SEC,false,2026-01-01T00:00:00Z,2026-01-01T00:00:00Z

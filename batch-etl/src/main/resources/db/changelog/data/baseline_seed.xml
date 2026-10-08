@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Load Core Regions -->
+    <changeSet id="baseline_seed-001-regions" author="serbentd">
+        <comment>Seed core trade hub regions from CSV</comment>
+        <loadData tableName="dim_region"
+                  file="db/data/dim_regions.csv"
+                  relativeToChangelogFile="false"/>
+    </changeSet>
+
+    <!-- 2. Load Core NPC Trade Hub Stations -->
+    <changeSet id="baseline_seed-002-stations" author="serbentd">
+        <comment>Seed primary trade hub NPC stations from CSV</comment>
+        <loadData tableName="dim_station"
+                  file="db/data/dim_stations.csv"
+                  relativeToChangelogFile="false"/>
+    </changeSet>
+
+    <!-- 3. Load Core Traded Items -->
+    <changeSet id="baseline_seed-003-items" author="serbentd">
+        <comment>Seed core minerals, PLEX, and ship hulls from CSV</comment>
+        <loadData tableName="dim_item"
+                  file="db/data/dim_items.csv"
+                  relativeToChangelogFile="false"/>
+    </changeSet>
+
+</databaseChangeLog>

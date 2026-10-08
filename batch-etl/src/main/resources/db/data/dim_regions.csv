@@ -1,0 +1,7 @@
+region_id,region_name,description,created_at,updated_at
+10000002,The Forge,"Primary Caldari State trade hub region (home to Jita 4-4)",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+10000043,Domain,"Amarr Empire capital region and secondary trade hub (Amarr VIII)",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+10000032,Sinq Laison,"Gallente Federation commercial trade hub (Dodixie)",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+10000030,Heimatar,"Minmatar Republic industrial trade hub (Rens)",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+10000042,Metropolis,"Northern Minmatar trade hub (Hek)",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z
+10000016,Lonetrek,"Caldari industrial region adjacent to The Forge",2026-01-01T00:00:00Z,2026-01-01T00:00:00Z

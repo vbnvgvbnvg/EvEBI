@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Conformed Date Dimension Table -->
+    <changeSet id="dim_date-001-create-table" author="serbentd">
+        <comment>Create conformed date dimension table for temporal slicing and time-intelligence</comment>
+        <createTable tableName="dim_date">
+            <column name="date_id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="pk_dim_date" nullable="false"/>
+            </column>
+            <column name="full_date" type="DATE">
+                <constraints unique="true" uniqueConstraintName="uq_dim_date_full_date" nullable="false"/>
+            </column>
+            <column name="year_num" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quarter" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="month_num" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="month_name" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="week_of_year" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="day_of_month" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="day_of_week" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="day_name" type="VARCHAR(16)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_weekend" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Documentation Remarks -->
+    <changeSet id="dim_date-002-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for dim_date</comment>
+        <setTableRemarks tableName="dim_date"
+                         remarks="Conformed calendar dimension pre-generating calendar intelligence for analytical queries and DAX time-intelligence"/>
+        <setColumnRemarks tableName="dim_date" columnName="date_id"
+                          remarks="Smart surrogate key formatted as YYYYMMDD integer (e.g. 20260930) for ultra-fast 4-byte joins"/>
+        <setColumnRemarks tableName="dim_date" columnName="full_date"
+                          remarks="True calendar date (e.g. 2026-09-30)"/>
+        <setColumnRemarks tableName="dim_date" columnName="year_num"
+                          remarks="Calendar year (e.g. 2026)"/>
+        <setColumnRemarks tableName="dim_date" columnName="quarter"
+                          remarks="Calendar quarter (1 to 4)"/>
+        <setColumnRemarks tableName="dim_date" columnName="month_num"
+                          remarks="Calendar month number (1 to 12)"/>
+        <setColumnRemarks tableName="dim_date" columnName="month_name"
+                          remarks="Full month name (e.g. September) for report labels"/>
+        <setColumnRemarks tableName="dim_date" columnName="week_of_year"
+                          remarks="ISO week number of year (1 to 53)"/>
+        <setColumnRemarks tableName="dim_date" columnName="day_of_month"
+                          remarks="Day of month (1 to 31)"/>
+        <setColumnRemarks tableName="dim_date" columnName="day_of_week"
+                          remarks="Day of week (1 = Monday ... 7 = Sunday)"/>
+        <setColumnRemarks tableName="dim_date" columnName="day_name"
+                          remarks="Day name (e.g. Wednesday)"/>
+        <setColumnRemarks tableName="dim_date" columnName="is_weekend"
+                          remarks="Flag indicating whether date falls on a weekend"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Conformed Station Dimension Table -->
+    <changeSet id="dim_station-001-create-table" author="serbentd">
+        <comment>Create conformed station and location dimension table</comment>
+        <createTable tableName="dim_station">
+            <column name="station_id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="pk_dim_station" nullable="false"/>
+            </column>
+            <column name="station_name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="solar_system_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="solar_system_name" type="VARCHAR(128)"/>
+            <column name="region_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="security_status" type="NUMERIC(4, 2)"/>
+            <column name="security_class" type="VARCHAR(16)"/>
+            <column name="is_structure" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes -->
+    <changeSet id="dim_station-002-create-indexes" author="serbentd">
+        <comment>Create indexes for station lookups</comment>
+        <createIndex tableName="dim_station" indexName="idx_dim_station_region">
+            <column name="region_id"/>
+        </createIndex>
+        <createIndex tableName="dim_station" indexName="idx_dim_station_system">
+            <column name="solar_system_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 3. Foreign Key Constraints -->
+    <changeSet id="dim_station-003-create-foreign-keys" author="serbentd">
+        <comment>Create foreign key constraint to dim_region</comment>
+        <addForeignKeyConstraint baseTableName="dim_station"
+                                 baseColumnNames="region_id"
+                                 constraintName="fk_dim_station_region"
+                                 referencedTableName="dim_region"
+                                 referencedColumnNames="region_id"/>
+    </changeSet>
+
+    <!-- 4. Documentation Remarks -->
+    <changeSet id="dim_station-004-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for dim_station</comment>
+        <setTableRemarks tableName="dim_station"
+                         remarks="Conformed station dimension representing NPC stations and player-owned Upwell Citadels"/>
+        <setColumnRemarks tableName="dim_station" columnName="station_id"
+                          remarks="Unique station ID (from staStations) or Citadel structure ID (from ESI universe/structures)"/>
+        <setColumnRemarks tableName="dim_station" columnName="station_name"
+                          remarks="Full descriptive station or structure name"/>
+        <setColumnRemarks tableName="dim_station" columnName="solar_system_id"
+                          remarks="Solar system ID where the station is located (e.g. 30000142 for Jita)"/>
+        <setColumnRemarks tableName="dim_station" columnName="solar_system_name"
+                          remarks="Solar system name"/>
+        <setColumnRemarks tableName="dim_station" columnName="region_id"
+                          remarks="Region ID where the station resides; references dim_region"/>
+        <setColumnRemarks tableName="dim_station" columnName="security_status"
+                          remarks="True solar system security status (-1.0 to 1.0)"/>
+        <setColumnRemarks tableName="dim_station" columnName="security_class"
+                          remarks="Security classification: HIGH_SEC (0.45 and above), LOW_SEC (between 0.0 and 0.45), or NULL_SEC (0.0 and below)"/>
+        <setColumnRemarks tableName="dim_station" columnName="is_structure"
+                          remarks="True if player-owned Upwell Citadel / Engineering Complex; false if NPC station"/>
+        <setColumnRemarks tableName="dim_station" columnName="created_at"
+                          remarks="Timestamp when this station was first recorded"/>
+        <setColumnRemarks tableName="dim_station" columnName="updated_at"
+                          remarks="Timestamp when this record was last updated"/>
+    </changeSet>
+
+</databaseChangeLog>

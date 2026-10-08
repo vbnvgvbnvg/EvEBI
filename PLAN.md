@@ -64,16 +64,25 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
 
 - [ ] **Phase 5: Analytical Star Schema & Historical Batch ETL**
-  - [ ] **Dimension Modeling & Static Data Seeding:**
-    - [ ] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_item`, `dim_region`, `dim_station`.
-    - [ ] Implement dimension data seeding (enriching item names, categories, solar systems, and station names from CCP SDE / ESI Universe endpoints).
-  - [ ] **Analytical Fact Tables:**
-    - [ ] Historical Trends Fact: `fact_daily_market_history` (OHLC prices, VWAP, total turnover, order count).
-    - [ ] Market Depth Fact: `fact_order_book_snapshot` (intraday order depth, liquidity, bid/ask spreads).
-  - [ ] **Spring Batch Pipeline:**
-    - [ ] Configure Spring Batch metadata repository in PostgreSQL.
+  - [x] **Step 5.1: Conformed Dimension Modeling (Liquibase & Domain Entities):**
+    - [x] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_time`, `dim_item`, `dim_region`, `dim_station`.
+    - [x] Configure staging table `market_orders` in `batch-etl` with precondition for in-memory batch reader tests.
+    - [x] Define JPA Entities and QueryDSL repositories for all dimensions and staging orders.
+  - [ ] **Step 5.2: Dimension Seeding, Exploration & SDE Sync Pipeline:**
+    - [x] Implement `dim_date` mathematical calendar generator (2020-2035) with ISO attributes.
+    - [x] Implement `dim_time` 1,440-minute clock dimension with EVE prime time buckets.
+    - [x] Package curated baseline dimension seed (`dim_regions.csv`, `dim_stations.csv`, `dim_items.csv`) loaded via Liquibase `<loadData>`.
+    - [x] Implement Late-Arriving Dimension resolution (`CitadelDimensionResolver`) for dynamic player Upwell Citadels.
+    - [ ] Implement runtime SDE Synchronization Job/Tasklet (conditional streaming download via HTTP `ETag`/`Last-Modified`, bulk upsert into `dim_item` and `dim_station`, tracking `sde_metadata`).
+  - [x] **Step 5.3: Analytical Fact Tables (Liquibase & Additive Modeling):**
+    - [x] Historical Trends Fact: `fact_market_daily_summary` (OHLC prices, turnover ISK, volume traded, order count).
+    - [x] Market Depth Fact: `fact_order_book_liquidity` (intraday bid/ask spreads, liquidity).
+    - [x] JPA Entities (`FactMarketDailySummaryEntity`, `FactOrderBookLiquidityEntity`) and QueryDSL repositories.
+    - [x] Automated integration test suite (`FactRepositoryTest`) verifying star schema persistence and QueryDSL slicing.
+  - [ ] **Step 5.4: Spring Batch Pipeline & Daily ETL:**
+    - [ ] Configure Spring Batch metadata repository in PostgreSQL/H2.
     - [ ] Implement daily Spring Batch aggregation jobs with idempotent chunked processing.
-    - [ ] Implement historical price rollup and moving average computations.
+    - [ ] Verify Docker-free end-to-end batch execution and star schema population.
 
 - [ ] **Phase 6: Security Hardening, Containerized Testing & CI/CD**
   - [ ] **Database & Broker Least-Privilege Hardening:**

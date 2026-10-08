@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: Conformed Region Dimension Table -->
+    <changeSet id="dim_region-001-create-table" author="serbentd">
+        <comment>Create conformed region dimension table</comment>
+        <createTable tableName="dim_region">
+            <column name="region_id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="pk_dim_region" nullable="false"/>
+            </column>
+            <column name="region_name" type="VARCHAR(128)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes -->
+    <changeSet id="dim_region-002-create-indexes" author="serbentd">
+        <comment>Create indexes for region lookups</comment>
+        <createIndex tableName="dim_region" indexName="idx_dim_region_name">
+            <column name="region_name"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 3. Documentation Remarks -->
+    <changeSet id="dim_region-003-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for dim_region</comment>
+        <setTableRemarks tableName="dim_region"
+                         remarks="Conformed geographic region dimension representing EVE Online market trade regions"/>
+        <setColumnRemarks tableName="dim_region" columnName="region_id"
+                          remarks="EVE natural region identifier (e.g. 10000002 for The Forge)"/>
+        <setColumnRemarks tableName="dim_region" columnName="region_name"
+                          remarks="Official EVE region name (e.g. The Forge, Domain, Sinq Laison)"/>
+        <setColumnRemarks tableName="dim_region" columnName="description"
+                          remarks="Optional CCP lore or descriptive notes for the region"/>
+        <setColumnRemarks tableName="dim_region" columnName="created_at"
+                          remarks="Timestamp when this dimension record was first inserted"/>
+        <setColumnRemarks tableName="dim_region" columnName="updated_at"
+                          remarks="Timestamp when this dimension record was last synchronized"/>
+    </changeSet>
+
+</databaseChangeLog>
