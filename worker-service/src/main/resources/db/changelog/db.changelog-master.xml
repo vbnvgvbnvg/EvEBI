@@ -5,6 +5,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
+    <!-- Schema Initialization Layer -->
+    <include file="db/changelog/init/00-create-schemas.xml"/>
+
     <!-- Market Orders Domain -->
     <include file="db/changelog/domain/market_orders/init.xml"/>
     <include file="db/changelog/domain/market_orders/updates.xml"/>

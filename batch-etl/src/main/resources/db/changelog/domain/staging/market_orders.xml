@@ -9,11 +9,11 @@
     <changeSet id="staging_market_orders-001-create-table" author="serbentd">
         <preConditions onFail="MARK_RAN">
             <not>
-                <tableExists tableName="market_orders"/>
+                <tableExists tableName="market_orders" schemaName="staging"/>
             </not>
         </preConditions>
         <comment>Create operational market_orders staging table for ETL batch readers</comment>
-        <createTable tableName="market_orders">
+        <createTable tableName="market_orders" schemaName="staging">
             <column name="order_id" type="BIGINT">
                 <constraints primaryKey="true" primaryKeyName="pk_market_orders" nullable="false"/>
             </column>
@@ -73,11 +73,11 @@
     <changeSet id="staging_market_orders-002-create-indexes" author="serbentd">
         <preConditions onFail="MARK_RAN">
             <not>
-                <indexExists indexName="idx_market_orders_batch_read" tableName="market_orders"/>
+                <indexExists indexName="idx_market_orders_batch_read" tableName="market_orders" schemaName="staging"/>
             </not>
         </preConditions>
         <comment>Create indexes for batch ETL extraction</comment>
-        <createIndex tableName="market_orders" indexName="idx_market_orders_batch_read">
+        <createIndex tableName="market_orders" schemaName="staging" indexName="idx_market_orders_batch_read">
             <column name="region_id"/>
             <column name="type_id"/>
             <column name="issued"/>

@@ -8,7 +8,7 @@
     <!-- 1. Structure: Conformed Date Dimension Table -->
     <changeSet id="dim_date-001-create-table" author="serbentd">
         <comment>Create conformed date dimension table for temporal slicing and time-intelligence</comment>
-        <createTable tableName="dim_date">
+        <createTable tableName="dim_date" schemaName="analytics">
             <column name="date_id" type="INTEGER">
                 <constraints primaryKey="true" primaryKeyName="pk_dim_date" nullable="false"/>
             </column>
@@ -48,29 +48,29 @@
     <!-- 2. Documentation Remarks -->
     <changeSet id="dim_date-002-add-remarks" author="serbentd" runOnChange="true">
         <comment>Add table and column documentation for dim_date</comment>
-        <setTableRemarks tableName="dim_date"
+        <setTableRemarks tableName="dim_date" schemaName="analytics"
                          remarks="Conformed calendar dimension pre-generating calendar intelligence for analytical queries and DAX time-intelligence"/>
-        <setColumnRemarks tableName="dim_date" columnName="date_id"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="date_id"
                           remarks="Smart surrogate key formatted as YYYYMMDD integer (e.g. 20260930) for ultra-fast 4-byte joins"/>
-        <setColumnRemarks tableName="dim_date" columnName="full_date"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="full_date"
                           remarks="True calendar date (e.g. 2026-09-30)"/>
-        <setColumnRemarks tableName="dim_date" columnName="year_num"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="year_num"
                           remarks="Calendar year (e.g. 2026)"/>
-        <setColumnRemarks tableName="dim_date" columnName="quarter"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="quarter"
                           remarks="Calendar quarter (1 to 4)"/>
-        <setColumnRemarks tableName="dim_date" columnName="month_num"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="month_num"
                           remarks="Calendar month number (1 to 12)"/>
-        <setColumnRemarks tableName="dim_date" columnName="month_name"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="month_name"
                           remarks="Full month name (e.g. September) for report labels"/>
-        <setColumnRemarks tableName="dim_date" columnName="week_of_year"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="week_of_year"
                           remarks="ISO week number of year (1 to 53)"/>
-        <setColumnRemarks tableName="dim_date" columnName="day_of_month"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="day_of_month"
                           remarks="Day of month (1 to 31)"/>
-        <setColumnRemarks tableName="dim_date" columnName="day_of_week"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="day_of_week"
                           remarks="Day of week (1 = Monday ... 7 = Sunday)"/>
-        <setColumnRemarks tableName="dim_date" columnName="day_name"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="day_name"
                           remarks="Day name (e.g. Wednesday)"/>
-        <setColumnRemarks tableName="dim_date" columnName="is_weekend"
+        <setColumnRemarks tableName="dim_date" schemaName="analytics" columnName="is_weekend"
                           remarks="Flag indicating whether date falls on a weekend"/>
     </changeSet>
 

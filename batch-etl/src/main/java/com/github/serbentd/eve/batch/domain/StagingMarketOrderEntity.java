@@ -16,7 +16,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "market_orders")
+@Table(name = "market_orders", schema = "staging")
 @Getter
 @Setter
 @Builder

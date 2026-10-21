@@ -4,6 +4,7 @@ import com.github.serbentd.eve.batch.domain.DimDateEntity;
 import com.github.serbentd.eve.batch.domain.DimTimeEntity;
 import com.github.serbentd.eve.batch.repository.DimDateRepository;
 import com.github.serbentd.eve.batch.repository.DimTimeRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -38,6 +39,12 @@ class DateTimeDimensionServiceTest {
         this.timeDimensionService = timeDimensionService;
         this.dimDateRepository = dimDateRepository;
         this.dimTimeRepository = dimTimeRepository;
+    }
+
+    @BeforeEach
+    void setUp() {
+        dimDateRepository.deleteAll();
+        dimTimeRepository.deleteAll();
     }
 
     @Test

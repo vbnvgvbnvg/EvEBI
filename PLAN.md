@@ -64,10 +64,11 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
 
 - [ ] **Phase 5: Analytical Star Schema & Historical Batch ETL**
-  - [x] **Step 5.1: Conformed Dimension Modeling (Liquibase & Domain Entities):**
-    - [x] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_time`, `dim_item`, `dim_region`, `dim_station`.
-    - [x] Configure staging table `market_orders` in `batch-etl` with precondition for in-memory batch reader tests.
-    - [x] Define JPA Entities and QueryDSL repositories for all dimensions and staging orders.
+  - [x] **Step 5.1: Conformed Dimension & 3-Tier Schema Modeling (Liquibase & Domain Entities):**
+    - [x] Establish 3-tier dedicated database schema model (`staging`, `analytics`, `batch`) separating operational landing tables, dimensional analytical marts, and Spring Batch operational metadata.
+    - [x] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_time`, `dim_item`, `dim_region`, `dim_station` in `analytics` schema.
+    - [x] Configure staging table `market_orders` in `staging` schema across both `worker-service` and `batch-etl`.
+    - [x] Define JPA Entities and QueryDSL repositories for all dimensions and staging orders with explicit schema namespaces.
   - [ ] **Step 5.2: Dimension Seeding, Exploration & SDE Sync Pipeline:**
     - [x] Implement `dim_date` mathematical calendar generator (2020-2035) with ISO attributes.
     - [x] Implement `dim_time` 1,440-minute clock dimension with EVE prime time buckets.
@@ -79,12 +80,25 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Market Depth Fact: `fact_order_book_liquidity` (intraday bid/ask spreads, liquidity).
     - [x] JPA Entities (`FactMarketDailySummaryEntity`, `FactOrderBookLiquidityEntity`) and QueryDSL repositories.
     - [x] Automated integration test suite (`FactRepositoryTest`) verifying star schema persistence and QueryDSL slicing.
-  - [ ] **Step 5.4: Spring Batch Pipeline & Daily ETL:**
-    - [ ] Configure Spring Batch metadata repository in PostgreSQL/H2.
-    - [ ] Implement daily Spring Batch aggregation jobs with idempotent chunked processing.
-    - [ ] Verify Docker-free end-to-end batch execution and star schema population.
+  - [x] **Step 5.4: Spring Batch Pipeline & Daily Market Summary ETL:**
+    - [x] Configure Spring Batch 5 metadata tables and sequences via Liquibase in dedicated `batch` schema (`tablePrefix = "batch.BATCH_"`).
+    - [x] Externalize step-specific chunk sizing and cursor streaming properties (`BatchProperties`).
+    - [x] Implement `dailyMarketSummaryJob` with single-pass CTE window function streaming reader (`JdbcCursorItemReader`), OHLC calculation, and ANSI SQL batch upsert writer (`DailyMarketSummaryWriter`).
+    - [x] Automated integration test suite (`DailyMarketSummaryJobIntegrationTest`) verifying OHLC aggregation and rerun idempotency.
+  - [x] **Step 5.5: Intraday Order Book Liquidity Snapshot Job:**
+    - [x] Implement `orderBookLiquidityJob` with streaming conditional aggregation reader (`location_id, type_id`), bid/ask spread computation, and late-arriving Upwell citadel dimension resolution.
+    - [x] Implement high-throughput ANSI SQL batch writer (`OrderBookLiquidityWriter`) into `analytics.fact_order_book_liquidity`.
+    - [x] Automated integration test suite (`OrderBookLiquidityJobIntegrationTest`) verifying market depth, one-sided order books, citadel resolution, and idempotency.
+  - [ ] **Step 5.6: Batch Resilience, Orphan Cleanup & Horizontal Scale:**
+    - [x] Implement `ResilientJobExecutionReaper` (`ApplicationRunner`) utilizing PostgreSQL session advisory locks (`pg_try_advisory_lock`), `JobExplorer`, and `JobRepository` to instantly detect severed sockets and mark orphaned executions as `ABANDONED`/`FAILED` with zero wait time and zero false positives on slow network steps.
+    - [x] Configure Spring Boot graceful shutdown (`spring.lifecycle.timeout-per-shutdown-phase: 60s`) and SIGTERM handling so container terminations cleanly set status to `STOPPED` for zero-friction restarts.
+    - [ ] Design and configure Remote Partitioning (Manager/Worker pattern via RabbitMQ) for multi-node horizontal scale-out across non-overlapping market regions.
 
 - [ ] **Phase 6: Security Hardening, Containerized Testing & CI/CD**
+  - [ ] **Kubernetes Batch Deployment & Process Lifecycle:**
+    - [ ] Inject Kubernetes Downward API metadata (`POD_NAME`, `POD_NODE_NAME`) into job execution parameters for distributed auditability.
+    - [ ] Configure Kubernetes `CronJob` specifications with `concurrencyPolicy: Forbid` and `restartPolicy: OnFailure`.
+    - [ ] Configure `terminationGracePeriodSeconds: 120` and `exec java` container entrypoints to ensure `SIGTERM` signals reach Spring Boot unhindered.
   - [ ] **Database & Broker Least-Privilege Hardening:**
     - [ ] Configure least-privilege PostgreSQL roles via Liquibase (`worker_dml`, `liquibase_ddl`, `powerbi_reader` read-only).
     - [ ] Configure RabbitMQ dedicated virtual host (`/eve_market`) with scoped producer write-only and consumer read-only access.

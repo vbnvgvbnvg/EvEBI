@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="init-000-create-schemas" author="serbentd">
+        <comment>Create dedicated schemas for 3-tier data architecture: staging, analytics, and batch</comment>
+        <sql>
+            CREATE SCHEMA IF NOT EXISTS staging;
+            CREATE SCHEMA IF NOT EXISTS analytics;
+            CREATE SCHEMA IF NOT EXISTS batch;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

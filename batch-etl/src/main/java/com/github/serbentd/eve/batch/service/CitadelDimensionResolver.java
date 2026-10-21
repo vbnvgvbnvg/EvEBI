@@ -63,7 +63,7 @@ public class CitadelDimensionResolver {
                     .updatedAt(now)
                     .build();
 
-            DimStationEntity saved = dimStationRepository.save(stub);
+            DimStationEntity saved = dimStationRepository.saveAndFlush(stub);
             log.info("Created late-arriving dimension stub for stationId: {}, systemId: {}, isStructure: {}",
                     locationId, systemId, isStructure);
             return saved;
@@ -127,7 +127,7 @@ public class CitadelDimensionResolver {
                 })
                 .toList();
 
-        dimStationRepository.saveAll(stubs);
+        dimStationRepository.saveAllAndFlush(stubs);
         log.info("Batch-registered {} late-arriving dimension stubs into dim_station", stubs.size());
     }
 

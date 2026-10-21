@@ -30,6 +30,12 @@ spring:
     jdbc:
       initialize-schema: never
 
+eve:
+  batch:
+    chunk-size:
+      daily-market-summary: 10
+      order-book-liquidity: 10
+
 management:
   endpoints:
     web:

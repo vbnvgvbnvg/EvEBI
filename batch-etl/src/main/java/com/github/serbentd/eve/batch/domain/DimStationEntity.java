@@ -19,7 +19,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "dim_station")
+@Table(name = "dim_station", schema = "analytics")
 @Getter
 @Setter
 @Builder
