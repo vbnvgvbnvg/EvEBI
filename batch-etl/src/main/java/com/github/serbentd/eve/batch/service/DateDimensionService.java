@@ -69,11 +69,34 @@ public class DateDimensionService {
         return totalInserted;
     }
 
+    /**
+     * Converts a LocalDate to an integer surrogate key (YYYYMMDD).
+     *
+     * @param date the date to convert
+     * @return YYYYMMDD surrogate integer key
+     */
+    public static int toDateId(LocalDate date) {
+        return (date.getYear() * 10000) + (date.getMonthValue() * 100) + date.getDayOfMonth();
+    }
+
+    /**
+     * Ensures that the specified calendar date exists in dim_date, seeding it if absent.
+     *
+     * @param date the date to ensure
+     * @return the persistent DimDateEntity
+     */
+    @Transactional
+    public DimDateEntity ensureDateExists(LocalDate date) {
+        int dateId = toDateId(date);
+        return dimDateRepository.findById(dateId)
+                .orElseGet(() -> dimDateRepository.saveAndFlush(buildDateEntity(date)));
+    }
+
     private DimDateEntity buildDateEntity(LocalDate date) {
         int year = date.getYear();
         int month = date.getMonthValue();
         int day = date.getDayOfMonth();
-        int dateId = (year * 10000) + (month * 100) + day;
+        int dateId = toDateId(date);
         int quarter = ((month - 1) / 3) + 1;
         int weekOfYear = date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR);
         DayOfWeek dayOfWeek = date.getDayOfWeek();

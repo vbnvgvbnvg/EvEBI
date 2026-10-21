@@ -15,7 +15,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "dim_region")
+@Table(name = "dim_region", schema = "analytics")
 @Getter
 @Setter
 @Builder

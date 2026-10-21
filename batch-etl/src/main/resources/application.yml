@@ -5,6 +5,9 @@ spring:
   application:
     name: batch-etl
 
+  lifecycle:
+    timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT:60s}
+
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}
     username: ${POSTGRES_USER:eve_user}
@@ -40,6 +43,12 @@ spring:
       enabled: false
     jdbc:
       initialize-schema: never
+
+eve:
+  batch:
+    chunk-size:
+      daily-market-summary: ${EVE_BATCH_DAILY_CHUNK_SIZE:500}
+      order-book-liquidity: ${EVE_BATCH_LIQUIDITY_CHUNK_SIZE:1000}
 
 management:
   endpoints:

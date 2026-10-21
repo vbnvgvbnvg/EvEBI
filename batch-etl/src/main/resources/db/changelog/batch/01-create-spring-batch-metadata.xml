@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. BATCH_JOB_INSTANCE -->
+    <changeSet id="batch_metadata-001-create-job-instance" author="serbentd">
+        <comment>Create Spring Batch BATCH_JOB_INSTANCE table</comment>
+        <createTable tableName="BATCH_JOB_INSTANCE" schemaName="batch">
+            <column name="JOB_INSTANCE_ID" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_BATCH_JOB_INSTANCE" nullable="false"/>
+            </column>
+            <column name="VERSION" type="BIGINT"/>
+            <column name="JOB_NAME" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="JOB_KEY" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="BATCH_JOB_INSTANCE"
+                             schemaName="batch"
+                             columnNames="JOB_NAME, JOB_KEY"
+                             constraintName="JOB_INST_UN"/>
+    </changeSet>
+
+    <!-- 2. BATCH_JOB_EXECUTION -->
+    <changeSet id="batch_metadata-002-create-job-execution" author="serbentd">
+        <comment>Create Spring Batch BATCH_JOB_EXECUTION table</comment>
+        <createTable tableName="BATCH_JOB_EXECUTION" schemaName="batch">
+            <column name="JOB_EXECUTION_ID" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_BATCH_JOB_EXECUTION" nullable="false"/>
+            </column>
+            <column name="VERSION" type="BIGINT"/>
+            <column name="JOB_INSTANCE_ID" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CREATE_TIME" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="START_TIME" type="TIMESTAMP"/>
+            <column name="END_TIME" type="TIMESTAMP"/>
+            <column name="STATUS" type="VARCHAR(10)"/>
+            <column name="EXIT_CODE" type="VARCHAR(2500)"/>
+            <column name="EXIT_MESSAGE" type="VARCHAR(2500)"/>
+            <column name="LAST_UPDATED" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="batch"
+                                 baseTableName="BATCH_JOB_EXECUTION"
+                                 baseColumnNames="JOB_INSTANCE_ID"
+                                 constraintName="JOB_INST_EXEC_FK"
+                                 referencedTableSchemaName="batch"
+                                 referencedTableName="BATCH_JOB_INSTANCE"
+                                 referencedColumnNames="JOB_INSTANCE_ID"/>
+    </changeSet>
+
+    <!-- 3. BATCH_JOB_EXECUTION_PARAMS -->
+    <changeSet id="batch_metadata-003-create-job-execution-params" author="serbentd">
+        <comment>Create Spring Batch BATCH_JOB_EXECUTION_PARAMS table</comment>
+        <createTable tableName="BATCH_JOB_EXECUTION_PARAMS" schemaName="batch">
+            <column name="JOB_EXECUTION_ID" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PARAMETER_NAME" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PARAMETER_TYPE" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="PARAMETER_VALUE" type="VARCHAR(2500)"/>
+            <column name="IDENTIFYING" type="CHAR(1)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="batch"
+                                 baseTableName="BATCH_JOB_EXECUTION_PARAMS"
+                                 baseColumnNames="JOB_EXECUTION_ID"
+                                 constraintName="JOB_EXEC_PARAMS_FK"
+                                 referencedTableSchemaName="batch"
+                                 referencedTableName="BATCH_JOB_EXECUTION"
+                                 referencedColumnNames="JOB_EXECUTION_ID"/>
+    </changeSet>
+
+    <!-- 4. BATCH_STEP_EXECUTION -->
+    <changeSet id="batch_metadata-004-create-step-execution" author="serbentd">
+        <comment>Create Spring Batch BATCH_STEP_EXECUTION table</comment>
+        <createTable tableName="BATCH_STEP_EXECUTION" schemaName="batch">
+            <column name="STEP_EXECUTION_ID" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_BATCH_STEP_EXECUTION" nullable="false"/>
+            </column>
+            <column name="VERSION" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="STEP_NAME" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="JOB_EXECUTION_ID" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="CREATE_TIME" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="START_TIME" type="TIMESTAMP"/>
+            <column name="END_TIME" type="TIMESTAMP"/>
+            <column name="STATUS" type="VARCHAR(10)"/>
+            <column name="COMMIT_COUNT" type="BIGINT"/>
+            <column name="READ_COUNT" type="BIGINT"/>
+            <column name="FILTER_COUNT" type="BIGINT"/>
+            <column name="WRITE_COUNT" type="BIGINT"/>
+            <column name="READ_SKIP_COUNT" type="BIGINT"/>
+            <column name="WRITE_SKIP_COUNT" type="BIGINT"/>
+            <column name="PROCESS_SKIP_COUNT" type="BIGINT"/>
+            <column name="ROLLBACK_COUNT" type="BIGINT"/>
+            <column name="EXIT_CODE" type="VARCHAR(2500)"/>
+            <column name="EXIT_MESSAGE" type="VARCHAR(2500)"/>
+            <column name="LAST_UPDATED" type="TIMESTAMP"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="batch"
+                                 baseTableName="BATCH_STEP_EXECUTION"
+                                 baseColumnNames="JOB_EXECUTION_ID"
+                                 constraintName="JOB_EXEC_STEP_FK"
+                                 referencedTableSchemaName="batch"
+                                 referencedTableName="BATCH_JOB_EXECUTION"
+                                 referencedColumnNames="JOB_EXECUTION_ID"/>
+    </changeSet>
+
+    <!-- 5. BATCH_STEP_EXECUTION_CONTEXT -->
+    <changeSet id="batch_metadata-005-create-step-execution-context" author="serbentd">
+        <comment>Create Spring Batch BATCH_STEP_EXECUTION_CONTEXT checkpoint table</comment>
+        <createTable tableName="BATCH_STEP_EXECUTION_CONTEXT" schemaName="batch">
+            <column name="STEP_EXECUTION_ID" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_BATCH_STEP_EXECUTION_CTX" nullable="false"/>
+            </column>
+            <column name="SHORT_CONTEXT" type="VARCHAR(2500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="SERIALIZED_CONTEXT" type="CLOB"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="batch"
+                                 baseTableName="BATCH_STEP_EXECUTION_CONTEXT"
+                                 baseColumnNames="STEP_EXECUTION_ID"
+                                 constraintName="STEP_EXEC_CTX_FK"
+                                 referencedTableSchemaName="batch"
+                                 referencedTableName="BATCH_STEP_EXECUTION"
+                                 referencedColumnNames="STEP_EXECUTION_ID"/>
+    </changeSet>
+
+    <!-- 6. BATCH_JOB_EXECUTION_CONTEXT -->
+    <changeSet id="batch_metadata-006-create-job-execution-context" author="serbentd">
+        <comment>Create Spring Batch BATCH_JOB_EXECUTION_CONTEXT table</comment>
+        <createTable tableName="BATCH_JOB_EXECUTION_CONTEXT" schemaName="batch">
+            <column name="JOB_EXECUTION_ID" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="PK_BATCH_JOB_EXECUTION_CTX" nullable="false"/>
+            </column>
+            <column name="SHORT_CONTEXT" type="VARCHAR(2500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="SERIALIZED_CONTEXT" type="CLOB"/>
+        </createTable>
+        <addForeignKeyConstraint baseTableSchemaName="batch"
+                                 baseTableName="BATCH_JOB_EXECUTION_CONTEXT"
+                                 baseColumnNames="JOB_EXECUTION_ID"
+                                 constraintName="JOB_EXEC_CTX_FK"
+                                 referencedTableSchemaName="batch"
+                                 referencedTableName="BATCH_JOB_EXECUTION"
+                                 referencedColumnNames="JOB_EXECUTION_ID"/>
+    </changeSet>
+
+    <!-- 7. Spring Batch ID Sequences -->
+    <changeSet id="batch_metadata-007-create-sequences" author="serbentd">
+        <comment>Create Spring Batch 5 sequences for execution IDs</comment>
+        <createSequence sequenceName="BATCH_STEP_EXECUTION_SEQ" schemaName="batch" maxValue="9223372036854775807" cycle="false"/>
+        <createSequence sequenceName="BATCH_JOB_EXECUTION_SEQ" schemaName="batch" maxValue="9223372036854775807" cycle="false"/>
+        <createSequence sequenceName="BATCH_JOB_SEQ" schemaName="batch" maxValue="9223372036854775807" cycle="false"/>
+    </changeSet>
+
+</databaseChangeLog>

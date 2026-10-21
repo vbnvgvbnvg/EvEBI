@@ -8,7 +8,7 @@
     <!-- 1. Structure: Order Book Liquidity Periodic Snapshot Fact Table -->
     <changeSet id="fact_order_book_liquidity-001-create-table" author="serbentd">
         <comment>Create conformed order book liquidity periodic fact table</comment>
-        <createTable tableName="fact_order_book_liquidity">
+        <createTable tableName="fact_order_book_liquidity" schemaName="analytics">
             <column name="liquidity_fact_id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" primaryKeyName="pk_fact_order_book_liquidity" nullable="false"/>
             </column>
@@ -49,6 +49,7 @@
     <changeSet id="fact_order_book_liquidity-002-unique-grain" author="serbentd">
         <comment>Enforce unique grain at date_id + time_id + location_id + type_id</comment>
         <addUniqueConstraint tableName="fact_order_book_liquidity"
+                             schemaName="analytics"
                              columnNames="date_id, time_id, location_id, type_id"
                              constraintName="uk_fact_liquidity_grain"/>
     </changeSet>
@@ -56,24 +57,32 @@
     <!-- 3. Foreign Key Constraints -->
     <changeSet id="fact_order_book_liquidity-003-foreign-keys" author="serbentd">
         <comment>Establish star-schema foreign keys to conformed dimensions</comment>
-        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_order_book_liquidity"
                                  baseColumnNames="date_id"
                                  constraintName="fk_fact_liquidity_date"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_date"
                                  referencedColumnNames="date_id"/>
-        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_order_book_liquidity"
                                  baseColumnNames="time_id"
                                  constraintName="fk_fact_liquidity_time"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_time"
                                  referencedColumnNames="time_id"/>
-        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_order_book_liquidity"
                                  baseColumnNames="location_id"
                                  constraintName="fk_fact_liquidity_station"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_station"
                                  referencedColumnNames="station_id"/>
-        <addForeignKeyConstraint baseTableName="fact_order_book_liquidity"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_order_book_liquidity"
                                  baseColumnNames="type_id"
                                  constraintName="fk_fact_liquidity_item"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_item"
                                  referencedColumnNames="type_id"/>
     </changeSet>
@@ -81,13 +90,13 @@
     <!-- 4. Analytical Performance Indexes -->
     <changeSet id="fact_order_book_liquidity-004-indexes" author="serbentd">
         <comment>Create indexing for station and item order depth time-series lookups</comment>
-        <createIndex tableName="fact_order_book_liquidity" indexName="idx_fact_liquidity_location_item">
+        <createIndex tableName="fact_order_book_liquidity" schemaName="analytics" indexName="idx_fact_liquidity_location_item">
             <column name="location_id"/>
             <column name="type_id"/>
             <column name="date_id"/>
             <column name="time_id"/>
         </createIndex>
-        <createIndex tableName="fact_order_book_liquidity" indexName="idx_fact_liquidity_item_date_time">
+        <createIndex tableName="fact_order_book_liquidity" schemaName="analytics" indexName="idx_fact_liquidity_item_date_time">
             <column name="type_id"/>
             <column name="date_id"/>
             <column name="time_id"/>
@@ -97,31 +106,31 @@
     <!-- 5. Documentation Remarks -->
     <changeSet id="fact_order_book_liquidity-005-remarks" author="serbentd" runOnChange="true">
         <comment>Add table and column documentation for fact_order_book_liquidity</comment>
-        <setTableRemarks tableName="fact_order_book_liquidity"
+        <setTableRemarks tableName="fact_order_book_liquidity" schemaName="analytics"
                          remarks="High-frequency periodic snapshot fact table recording order book liquidity and spread depth per station/citadel"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="liquidity_fact_id"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="liquidity_fact_id"
                           remarks="Surrogate primary key for periodic liquidity records"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="date_id"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="date_id"
                           remarks="Surrogate key referencing dim_date (YYYYMMDD)"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="time_id"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="time_id"
                           remarks="Surrogate key referencing dim_time (HHmm)"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="location_id"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="location_id"
                           remarks="Conformed station or Upwell citadel ID referencing dim_station"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="type_id"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="type_id"
                           remarks="Conformed item type ID referencing dim_item"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="best_bid"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="best_bid"
                           remarks="Highest active buy price (bid) at snapshot moment"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="best_ask"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="best_ask"
                           remarks="Lowest active sell price (ask) at snapshot moment"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="spread"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="spread"
                           remarks="Absolute spread (best_ask - best_bid)"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="buy_volume"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="buy_volume"
                           remarks="Total quantity demanded on the buy side"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="sell_volume"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="sell_volume"
                           remarks="Total quantity supplied on the sell side"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="buy_orders_count"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="buy_orders_count"
                           remarks="Number of active buy orders"/>
-        <setColumnRemarks tableName="fact_order_book_liquidity" columnName="sell_orders_count"
+        <setColumnRemarks tableName="fact_order_book_liquidity" schemaName="analytics" columnName="sell_orders_count"
                           remarks="Number of active sell orders"/>
     </changeSet>
 

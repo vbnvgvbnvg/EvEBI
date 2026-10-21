@@ -21,7 +21,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Entity
-@Table(name = "fact_order_book_liquidity")
+@Table(name = "fact_order_book_liquidity", schema = "analytics")
 @Getter
 @Setter
 @Builder

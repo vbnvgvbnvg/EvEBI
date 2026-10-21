@@ -5,6 +5,9 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
          http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
 
+    <!-- Schema Initialization Layer -->
+    <include file="db/changelog/init/00-create-schemas.xml"/>
+
     <!-- Staging Source Layer -->
     <include file="db/changelog/domain/staging/market_orders.xml"/>
 
@@ -21,5 +24,8 @@
     <!-- Analytical Fact Tables -->
     <include file="db/changelog/domain/facts/fact_market_daily_summary.xml"/>
     <include file="db/changelog/domain/facts/fact_order_book_liquidity.xml"/>
+
+    <!-- Spring Batch 5 Metadata Layer -->
+    <include file="db/changelog/batch/01-create-spring-batch-metadata.xml"/>
 
 </databaseChangeLog>

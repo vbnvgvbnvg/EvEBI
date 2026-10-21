@@ -21,7 +21,7 @@ import java.time.OffsetDateTime;
  * Maps to the {@code market_orders} database table.
  */
 @Entity
-@Table(name = "market_orders")
+@Table(name = "market_orders", schema = "staging")
 @Getter
 @Setter
 @NoArgsConstructor

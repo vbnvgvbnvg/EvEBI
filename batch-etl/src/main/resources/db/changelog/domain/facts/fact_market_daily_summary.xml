@@ -8,7 +8,7 @@
     <!-- 1. Structure: Daily Market Summary Periodic Fact Table -->
     <changeSet id="fact_market_daily_summary-001-create-table" author="serbentd">
         <comment>Create conformed daily market summary periodic snapshot fact table</comment>
-        <createTable tableName="fact_market_daily_summary">
+        <createTable tableName="fact_market_daily_summary" schemaName="analytics">
             <column name="summary_fact_id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" primaryKeyName="pk_fact_market_daily_summary" nullable="false"/>
             </column>
@@ -55,6 +55,7 @@
     <changeSet id="fact_market_daily_summary-002-unique-grain" author="serbentd">
         <comment>Enforce unique grain at date_id + region_id + type_id</comment>
         <addUniqueConstraint tableName="fact_market_daily_summary"
+                             schemaName="analytics"
                              columnNames="date_id, region_id, type_id"
                              constraintName="uk_fact_daily_summary_grain"/>
     </changeSet>
@@ -62,19 +63,25 @@
     <!-- 3. Foreign Key Constraints -->
     <changeSet id="fact_market_daily_summary-003-foreign-keys" author="serbentd">
         <comment>Establish star-schema foreign keys to conformed dimensions</comment>
-        <addForeignKeyConstraint baseTableName="fact_market_daily_summary"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_market_daily_summary"
                                  baseColumnNames="date_id"
                                  constraintName="fk_fact_daily_summary_date"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_date"
                                  referencedColumnNames="date_id"/>
-        <addForeignKeyConstraint baseTableName="fact_market_daily_summary"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_market_daily_summary"
                                  baseColumnNames="region_id"
                                  constraintName="fk_fact_daily_summary_region"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_region"
                                  referencedColumnNames="region_id"/>
-        <addForeignKeyConstraint baseTableName="fact_market_daily_summary"
+        <addForeignKeyConstraint baseTableSchemaName="analytics"
+                                 baseTableName="fact_market_daily_summary"
                                  baseColumnNames="type_id"
                                  constraintName="fk_fact_daily_summary_item"
+                                 referencedTableSchemaName="analytics"
                                  referencedTableName="dim_item"
                                  referencedColumnNames="type_id"/>
     </changeSet>
@@ -82,11 +89,11 @@
     <!-- 4. Analytical Performance Indexes -->
     <changeSet id="fact_market_daily_summary-004-indexes" author="serbentd">
         <comment>Create indexing for analytical queries and Power BI slicing</comment>
-        <createIndex tableName="fact_market_daily_summary" indexName="idx_fact_daily_summary_item_date">
+        <createIndex tableName="fact_market_daily_summary" schemaName="analytics" indexName="idx_fact_daily_summary_item_date">
             <column name="type_id"/>
             <column name="date_id"/>
         </createIndex>
-        <createIndex tableName="fact_market_daily_summary" indexName="idx_fact_daily_summary_region_date">
+        <createIndex tableName="fact_market_daily_summary" schemaName="analytics" indexName="idx_fact_daily_summary_region_date">
             <column name="region_id"/>
             <column name="date_id"/>
         </createIndex>
@@ -95,29 +102,29 @@
     <!-- 5. Documentation Remarks -->
     <changeSet id="fact_market_daily_summary-005-remarks" author="serbentd" runOnChange="true">
         <comment>Add table and column documentation for fact_market_daily_summary</comment>
-        <setTableRemarks tableName="fact_market_daily_summary"
+        <setTableRemarks tableName="fact_market_daily_summary" schemaName="analytics"
                          remarks="Periodic snapshot fact table aggregating daily regional market performance with additive primitives and OHLC boundary markers"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="summary_fact_id"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="summary_fact_id"
                           remarks="Surrogate primary key for historical daily summary records"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="date_id"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="date_id"
                           remarks="Calendar date surrogate key (YYYYMMDD) referencing dim_date"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="region_id"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="region_id"
                           remarks="Conformed market region ID referencing dim_region"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="type_id"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="type_id"
                           remarks="Conformed item type ID referencing dim_item"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="open_price"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="open_price"
                           remarks="First observed price on the given trading day"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="high_price"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="high_price"
                           remarks="Highest observed price on the given trading day"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="low_price"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="low_price"
                           remarks="Lowest observed price on the given trading day"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="close_price"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="close_price"
                           remarks="Last observed price on the given trading day"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="volume_traded"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="volume_traded"
                           remarks="Fully additive measure: total quantity traded during the day"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="turnover_isk"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="turnover_isk"
                           remarks="Fully additive measure: total ISK turnover (sum of price * volume)"/>
-        <setColumnRemarks tableName="fact_market_daily_summary" columnName="order_count"
+        <setColumnRemarks tableName="fact_market_daily_summary" schemaName="analytics" columnName="order_count"
                           remarks="Fully additive measure: number of orders active or traded"/>
     </changeSet>
 

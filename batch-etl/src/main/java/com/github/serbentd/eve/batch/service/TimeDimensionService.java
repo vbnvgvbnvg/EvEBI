@@ -50,6 +50,29 @@ public class TimeDimensionService {
         return records.size();
     }
 
+    /**
+     * Converts a LocalTime to an integer surrogate key (HHmm).
+     *
+     * @param time the time to convert
+     * @return HHmm surrogate integer key
+     */
+    public static int toTimeId(LocalTime time) {
+        return (time.getHour() * 100) + time.getMinute();
+    }
+
+    /**
+     * Ensures that the specified minute exists in dim_time, seeding it if absent.
+     *
+     * @param time the time to ensure
+     * @return the persistent DimTimeEntity
+     */
+    @Transactional
+    public DimTimeEntity ensureTimeExists(LocalTime time) {
+        int timeId = toTimeId(time);
+        return dimTimeRepository.findById(timeId)
+                .orElseGet(() -> dimTimeRepository.saveAndFlush(buildTimeEntity(time.getHour(), time.getMinute())));
+    }
+
     private DimTimeEntity buildTimeEntity(int hour, int minute) {
         int timeId = (hour * 100) + minute;
         LocalTime timeValue = LocalTime.of(hour, minute);
