@@ -35,6 +35,13 @@ eve:
     chunk-size:
       daily-market-summary: 10
       order-book-liquidity: 10
+    sde:
+      items-url: http://localhost:8089/dump/latest/invTypes.csv
+      stations-url: http://localhost:8089/dump/latest/staStations.csv
+      user-agent: EveBI-Test/1.0
+      connect-timeout: 5s
+      read-timeout: 5s
+      chunk-size: 10
 
 management:
   endpoints:

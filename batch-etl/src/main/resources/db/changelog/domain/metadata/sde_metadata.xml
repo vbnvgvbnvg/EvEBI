@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Structure: SDE Metadata Audit Table -->
+    <changeSet id="sde_metadata-001-create-table" author="serbentd">
+        <comment>Create SDE synchronization metadata audit table in analytics schema</comment>
+        <createTable tableName="sde_metadata" schemaName="analytics">
+            <column name="sync_id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" primaryKeyName="pk_sde_metadata" nullable="false"/>
+            </column>
+            <column name="sync_source" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_url" type="VARCHAR(1024)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="etag" type="VARCHAR(255)"/>
+            <column name="last_modified" type="VARCHAR(255)"/>
+            <column name="records_processed" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="records_inserted" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="records_updated" type="INTEGER" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(32)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="started_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_at" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="error_message" type="VARCHAR(2048)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- 2. Performance Indexes -->
+    <changeSet id="sde_metadata-002-create-indexes" author="serbentd">
+        <comment>Create indexes for SDE metadata status and source lookups</comment>
+        <createIndex tableName="sde_metadata" schemaName="analytics" indexName="idx_sde_metadata_source_status">
+            <column name="sync_source"/>
+            <column name="status"/>
+            <column name="started_at"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- 3. Documentation Remarks -->
+    <changeSet id="sde_metadata-003-add-remarks" author="serbentd" runOnChange="true">
+        <comment>Add table and column documentation for sde_metadata</comment>
+        <setTableRemarks tableName="sde_metadata" schemaName="analytics"
+                         remarks="Audit log tracking Static Data Export (SDE) synchronization cycles, ETags, and row counts"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="sync_id"
+                          remarks="Unique surrogate synchronization execution identifier"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="sync_source"
+                          remarks="Dimension or feed name synchronized (e.g. ITEMS, STATIONS)"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="source_url"
+                          remarks="HTTP source URL used for the synchronization"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="etag"
+                          remarks="HTTP ETag header value for cache validation (If-None-Match)"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="last_modified"
+                          remarks="HTTP Last-Modified header value for conditional requests"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="records_processed"
+                          remarks="Total row count streamed and evaluated during this sync"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="records_inserted"
+                          remarks="Number of brand new dimension rows inserted"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="records_updated"
+                          remarks="Number of existing dimension rows refreshed/updated"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="status"
+                          remarks="Outcome status of the sync (SUCCESS, SKIPPED_NOT_MODIFIED, FAILED)"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="started_at"
+                          remarks="Timestamp when the synchronization process commenced"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="completed_at"
+                          remarks="Timestamp when the synchronization process finished"/>
+        <setColumnRemarks tableName="sde_metadata" schemaName="analytics" columnName="error_message"
+                          remarks="Diagnostic error details if the sync failed"/>
+    </changeSet>
+
+</databaseChangeLog>

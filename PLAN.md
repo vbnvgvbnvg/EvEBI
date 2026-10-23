@@ -69,12 +69,12 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_time`, `dim_item`, `dim_region`, `dim_station` in `analytics` schema.
     - [x] Configure staging table `market_orders` in `staging` schema across both `worker-service` and `batch-etl`.
     - [x] Define JPA Entities and QueryDSL repositories for all dimensions and staging orders with explicit schema namespaces.
-  - [ ] **Step 5.2: Dimension Seeding, Exploration & SDE Sync Pipeline:**
+  - [x] **Step 5.2: Dimension Seeding, Exploration & SDE Sync Pipeline:**
     - [x] Implement `dim_date` mathematical calendar generator (2020-2035) with ISO attributes.
     - [x] Implement `dim_time` 1,440-minute clock dimension with EVE prime time buckets.
     - [x] Package curated baseline dimension seed (`dim_regions.csv`, `dim_stations.csv`, `dim_items.csv`) loaded via Liquibase `<loadData>`.
     - [x] Implement Late-Arriving Dimension resolution (`CitadelDimensionResolver`) for dynamic player Upwell Citadels.
-    - [ ] Implement runtime SDE Synchronization Job/Tasklet (conditional streaming download via HTTP `ETag`/`Last-Modified`, bulk upsert into `dim_item` and `dim_station`, tracking `sde_metadata`).
+    - [x] Implement runtime SDE Synchronization Job/Tasklet (conditional streaming download via HTTP `ETag`/`Last-Modified`, bulk upsert into `dim_item` and `dim_station`, tracking `sde_metadata`).
   - [x] **Step 5.3: Analytical Fact Tables (Liquibase & Additive Modeling):**
     - [x] Historical Trends Fact: `fact_market_daily_summary` (OHLC prices, turnover ISK, volume traded, order count).
     - [x] Market Depth Fact: `fact_order_book_liquidity` (intraday bid/ask spreads, liquidity).

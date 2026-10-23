@@ -25,6 +25,9 @@
     <include file="db/changelog/domain/facts/fact_market_daily_summary.xml"/>
     <include file="db/changelog/domain/facts/fact_order_book_liquidity.xml"/>
 
+    <!-- SDE Metadata & Audit Layer -->
+    <include file="db/changelog/domain/metadata/sde_metadata.xml"/>
+
     <!-- Spring Batch 5 Metadata Layer -->
     <include file="db/changelog/batch/01-create-spring-batch-metadata.xml"/>
 

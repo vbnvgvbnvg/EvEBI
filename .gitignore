@@ -13,6 +13,9 @@ target/
 # vscode
 .vscode
 
+# Sonar
+.sonar/
+
 # Environment & Secrets
 .env
 *.env
