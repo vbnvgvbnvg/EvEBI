@@ -28,6 +28,14 @@ class BatchConfigTest {
         assertThat(batchProperties.chunkSize()).isNotNull();
         assertThat(batchProperties.chunkSize().dailyMarketSummary()).isEqualTo(10);
         assertThat(batchProperties.chunkSize().orderBookLiquidity()).isEqualTo(10);
+
+        assertThat(batchProperties.sde()).isNotNull();
+        assertThat(batchProperties.sde().itemsUrl()).isEqualTo("http://localhost:8089/dump/latest/invTypes.csv");
+        assertThat(batchProperties.sde().stationsUrl()).isEqualTo("http://localhost:8089/dump/latest/staStations.csv");
+        assertThat(batchProperties.sde().userAgent()).isEqualTo("EveBI-Test/1.0");
+        assertThat(batchProperties.sde().connectTimeout()).hasSeconds(5);
+        assertThat(batchProperties.sde().readTimeout()).hasSeconds(5);
+        assertThat(batchProperties.sde().chunkSize()).isEqualTo(10);
     }
 
     @Test

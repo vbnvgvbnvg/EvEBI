@@ -49,6 +49,13 @@ eve:
     chunk-size:
       daily-market-summary: ${EVE_BATCH_DAILY_CHUNK_SIZE:500}
       order-book-liquidity: ${EVE_BATCH_LIQUIDITY_CHUNK_SIZE:1000}
+    sde:
+      items-url: ${EVE_SDE_ITEMS_URL:https://www.fuzzwork.co.uk/dump/latest/invTypes.csv}
+      stations-url: ${EVE_SDE_STATIONS_URL:https://www.fuzzwork.co.uk/dump/latest/staStations.csv}
+      user-agent: ${EVE_SDE_USER_AGENT:EveBI-BatchETL/1.0.0 (https://github.com/serbentd/EvEBI)}
+      connect-timeout: ${EVE_SDE_CONNECT_TIMEOUT:10s}
+      read-timeout: ${EVE_SDE_READ_TIMEOUT:60s}
+      chunk-size: ${EVE_SDE_CHUNK_SIZE:1000}
 
 management:
   endpoints:

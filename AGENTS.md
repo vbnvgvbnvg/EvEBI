@@ -53,6 +53,11 @@
   - Use H2 in PostgreSQL mode (`MODE=PostgreSQL;DEFAULT_NULL_ORDERING=HIGH`) with Liquibase migrations enabled.
   - Disable automatic AMQP listener startup in tests (`spring.rabbitmq.listener.simple.auto-startup=false`) to prevent connection attempts to missing local brokers.
   - Heavy containerized tests (Testcontainers) must be isolated under a separate optional Maven profile or test category.
+- **Dialect-Aware High-Throughput Batch Upserts:**
+  - Production batch pipelines MUST maintain maximum database-level throughput and atomicity. Never degrade production SQL into multiple round-trips or application-level two-pass logic (`UPDATE` then `INSERT`) solely to accommodate in-memory test databases.
+  - When raw SQL upserts are required (such as Spring Batch `ItemWriter` implementations):
+    - **PostgreSQL (Production):** Execute native, single-pass atomic upserts (`INSERT ... ON CONFLICT (...) DO UPDATE SET ...`).
+    - **H2 (Docker-Free Testing):** When H2 syntax differences prevent PostgreSQL-specific clauses (e.g. `DO UPDATE SET`), detect the dialect at startup (`getDatabaseProductName()`) and bind H2's native single-pass upsert (`MERGE INTO ... KEY(...) VALUES (...)`).
 - **Container Health Probes (Liveness vs. Readiness):**
   - Liveness probe (`/actuator/health/liveness`) must strictly monitor internal JVM state (`livenessState`). Never fail liveness on external database or broker outages.
   - Readiness probe (`/actuator/health/readiness`) must verify downstream dependencies (`readinessState, db, rabbit`).

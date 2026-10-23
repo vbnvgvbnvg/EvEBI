@@ -324,4 +324,49 @@ class DomainEntitiesTest {
         assertThat(order1.toString()).contains("12345");
         assertThat(new StagingMarketOrderEntity()).isNotNull();
     }
+
+    @Test
+    @DisplayName("Should verify SdeMetadataEntity contracts (equals, hashCode, toString)")
+    void shouldVerifySdeMetadataEntity() {
+        Instant now = Instant.now();
+        SdeMetadataEntity meta1 = SdeMetadataEntity.builder()
+                .syncId(1L)
+                .syncSource("ITEMS")
+                .sourceUrl("https://example.com/items.csv")
+                .etag("\"etag-123\"")
+                .lastModified("Wed, 21 Oct 2026 10:00:00 GMT")
+                .recordsProcessed(500)
+                .recordsInserted(450)
+                .recordsUpdated(50)
+                .status("SUCCESS")
+                .startedAt(now)
+                .completedAt(now.plusSeconds(10))
+                .build();
+
+        SdeMetadataEntity meta2 = SdeMetadataEntity.builder()
+                .syncId(1L)
+                .build();
+
+        SdeMetadataEntity meta3 = SdeMetadataEntity.builder()
+                .syncId(2L)
+                .build();
+
+        SdeMetadataEntity metaNoId1 = SdeMetadataEntity.builder()
+                .syncSource("ITEMS")
+                .startedAt(now)
+                .build();
+
+        SdeMetadataEntity metaNoId2 = SdeMetadataEntity.builder()
+                .syncSource("ITEMS")
+                .startedAt(now)
+                .build();
+
+        assertThat(meta1).isEqualTo(meta2);
+        assertThat(meta1).isNotEqualTo(meta3);
+        assertThat(metaNoId1).isEqualTo(metaNoId2);
+        assertThat(meta1.hashCode()).isEqualTo(meta2.hashCode());
+        assertThat(metaNoId1.hashCode()).isEqualTo(metaNoId2.hashCode());
+        assertThat(meta1.toString()).contains("ITEMS");
+        assertThat(new SdeMetadataEntity()).isNotNull();
+    }
 }
