@@ -1,6 +1,7 @@
 package com.github.serbentd.eve.batch.service;
 
 import com.github.serbentd.eve.batch.config.BatchProperties;
+import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.domain.SdeMetadataEntity;
 import com.github.serbentd.eve.batch.repository.SdeMetadataRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -66,6 +67,21 @@ class SdeDownloadServiceTest {
                         Duration.ofSeconds(5),
                         Duration.ofSeconds(10),
                         500
+                ),
+                new BatchProperties.RemotePartitioningProperties(
+                        PartitionRole.STANDALONE,
+                        false,
+                        "test.exchange",
+                        "test.queue",
+                        "test.routingKey",
+                        "test.dlx",
+                        "test.dlq",
+                        "test.dlq",
+                        Duration.ofSeconds(5),
+                        Duration.ofMinutes(10),
+                        2,
+                        1,
+                        java.util.Map.of(10000002L, 2)
                 )
         );
         this.downloadService = new SdeDownloadService(

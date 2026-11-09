@@ -15,6 +15,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
+import java.util.Objects;
 
 /**
  * Step-scoped processor transforming order book liquidity aggregations into
@@ -34,12 +35,12 @@ public class OrderBookLiquidityProcessor implements ItemProcessor<OrderBookLiqui
     private final CitadelDimensionResolver citadelDimensionResolver;
 
     public OrderBookLiquidityProcessor(
-            @Value("#{jobParameters['snapshotTime'] ?: T(java.time.Instant).now().toString()}") String snapshotTimeStr,
+            @Value(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_EXPRESSION) String snapshotTimeStr,
             DateDimensionService dateDimensionService,
             TimeDimensionService timeDimensionService,
             CitadelDimensionResolver citadelDimensionResolver) {
 
-        this.snapshotInstant = Instant.parse(snapshotTimeStr);
+        this.snapshotInstant = Instant.parse(Objects.requireNonNull(snapshotTimeStr, "Job parameter 'snapshotTime' is required"));
         this.date = this.snapshotInstant.atZone(ZoneOffset.UTC).toLocalDate();
         this.time = this.snapshotInstant.atZone(ZoneOffset.UTC).toLocalTime();
 

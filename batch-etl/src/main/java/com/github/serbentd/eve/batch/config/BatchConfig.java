@@ -1,6 +1,7 @@
 package com.github.serbentd.eve.batch.config;
 
 import org.springframework.batch.core.configuration.support.DefaultBatchConfiguration;
+import org.springframework.batch.integration.config.annotation.EnableBatchIntegration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import java.net.http.HttpClient;
  */
 @Configuration
 @EnableConfigurationProperties(BatchProperties.class)
+@EnableBatchIntegration
 public class BatchConfig extends DefaultBatchConfiguration {
 
     private static final String BATCH_TABLE_PREFIX = "batch.BATCH_";

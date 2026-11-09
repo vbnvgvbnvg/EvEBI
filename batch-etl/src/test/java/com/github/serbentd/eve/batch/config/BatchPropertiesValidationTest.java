@@ -49,7 +49,8 @@ class BatchPropertiesValidationTest {
     void validate_whenChunkSizeInvalid_shouldDetectViolations() {
         BatchProperties properties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(-1, 0),
-                createValidSdeProperties()
+                createValidSdeProperties(),
+                createValidRemotePartitioningProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -75,7 +76,8 @@ class BatchPropertiesValidationTest {
                         null,
                         null,
                         -50
-                )
+                ),
+                createValidRemotePartitioningProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -91,6 +93,75 @@ class BatchPropertiesValidationTest {
                 "sde.readTimeout",
                 "sde.chunkSize"
         );
+    }
+
+    @Test
+    @DisplayName("Should detect violations when remote partitioning properties are missing or invalid")
+    void validate_whenRemotePartitioningPropertiesInvalid_shouldDetectViolations() {
+        BatchProperties properties = new BatchProperties(
+                createValidChunkSizes(),
+                createValidSdeProperties(),
+                new BatchProperties.RemotePartitioningProperties(
+                        null,
+                        null,
+                        "",
+                        "   ",
+                        "",
+                        "",
+                        "   ",
+                        "",
+                        null,
+                        null,
+                        -1,
+                        -5,
+                        java.util.Map.of()
+                )
+        );
+
+        Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains(
+                "remotePartitioning.role",
+                "remotePartitioning.amqpFlowsEnabled",
+                "remotePartitioning.exchange",
+                "remotePartitioning.requestsQueue",
+                "remotePartitioning.requestsRoutingKey",
+                "remotePartitioning.deadLetterExchange",
+                "remotePartitioning.deadLetterQueue",
+                "remotePartitioning.deadLetterRoutingKey",
+                "remotePartitioning.pollInterval",
+                "remotePartitioning.timeout",
+                "remotePartitioning.workerConcurrency",
+                "remotePartitioning.prefetchCount",
+                "remotePartitioning.heavyRegionSlices"
+        );
+    }
+
+    @Test
+    @DisplayName("Should derive partitioned status from PartitionRole")
+    void isPartitioned_shouldReflectPartitionRole() {
+        BatchProperties.RemotePartitioningProperties managerProps = createValidRemotePartitioningProperties();
+        assertThat(managerProps.isPartitioned()).isTrue();
+
+        BatchProperties.RemotePartitioningProperties standaloneProps = new BatchProperties.RemotePartitioningProperties(
+                PartitionRole.STANDALONE,
+                false,
+                "eve.batch.partition.exchange",
+                "eve.batch.partition.requests",
+                "eve.batch.partition.requests",
+                "eve.batch.partition.dlx",
+                "eve.batch.partition.dlq",
+                "eve.batch.partition.dlq",
+                Duration.ofSeconds(5),
+                Duration.ofMinutes(30),
+                4,
+                1,
+                java.util.Map.of(THE_FORGE_REGION_ID, 4)
+        );
+        assertThat(standaloneProps.isPartitioned()).isFalse();
     }
 
     @Test
@@ -126,7 +197,8 @@ class BatchPropertiesValidationTest {
     private static BatchProperties createValidProperties() {
         return new BatchProperties(
                 createValidChunkSizes(),
-                createValidSdeProperties()
+                createValidSdeProperties(),
+                createValidRemotePartitioningProperties()
         );
     }
 
@@ -142,6 +214,24 @@ class BatchPropertiesValidationTest {
                 Duration.ofSeconds(10),
                 Duration.ofSeconds(60),
                 1000
+        );
+    }
+
+    private static BatchProperties.RemotePartitioningProperties createValidRemotePartitioningProperties() {
+        return new BatchProperties.RemotePartitioningProperties(
+                PartitionRole.MANAGER,
+                true,
+                "eve.batch.partition.exchange",
+                "eve.batch.partition.requests",
+                "eve.batch.partition.requests",
+                "eve.batch.partition.dlx",
+                "eve.batch.partition.dlq",
+                "eve.batch.partition.dlq",
+                Duration.ofSeconds(5),
+                Duration.ofMinutes(30),
+                4,
+                1,
+                java.util.Map.of(THE_FORGE_REGION_ID, 4)
         );
     }
 }
