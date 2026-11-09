@@ -30,6 +30,11 @@ spring:
     jdbc:
       initialize-schema: never
 
+  rabbitmq:
+    listener:
+      simple:
+        auto-startup: false
+
 eve:
   batch:
     chunk-size:
@@ -42,6 +47,21 @@ eve:
       connect-timeout: 5s
       read-timeout: 5s
       chunk-size: 10
+    remote-partitioning:
+      role: STANDALONE
+      amqp-flows-enabled: true
+      exchange: test.batch.partition.exchange
+      requests-queue: test.batch.partition.requests
+      requests-routing-key: test.batch.partition.requests
+      dead-letter-exchange: test.batch.partition.dlx
+      dead-letter-queue: test.batch.partition.dlq
+      dead-letter-routing-key: test.batch.partition.dlq
+      poll-interval: 100ms
+      timeout: 10s
+      worker-concurrency: 1
+      prefetch-count: 1
+      heavy-region-slices:
+        10000002: 2
 
 management:
   endpoints:
@@ -59,3 +79,6 @@ management:
           include: livenessState
         readiness:
           include: readinessState, db
+  health:
+    rabbit:
+      enabled: false

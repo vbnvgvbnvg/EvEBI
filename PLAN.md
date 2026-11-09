@@ -63,7 +63,7 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Filter out non-market space (wormholes `11000000+`, abyssal space `12000000+`).
     - [x] Add caching for universe region IDs to minimize overhead across hourly scraping cycles.
 
-- [ ] **Phase 5: Analytical Star Schema & Historical Batch ETL**
+- [x] **Phase 5: Analytical Star Schema & Historical Batch ETL**
   - [x] **Step 5.1: Conformed Dimension & 3-Tier Schema Modeling (Liquibase & Domain Entities):**
     - [x] Establish 3-tier dedicated database schema model (`staging`, `analytics`, `batch`) separating operational landing tables, dimensional analytical marts, and Spring Batch operational metadata.
     - [x] Configure Liquibase changesets for Conformed Dimensions: `dim_date`, `dim_time`, `dim_item`, `dim_region`, `dim_station` in `analytics` schema.
@@ -89,10 +89,10 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Implement `orderBookLiquidityJob` with streaming conditional aggregation reader (`location_id, type_id`), bid/ask spread computation, and late-arriving Upwell citadel dimension resolution.
     - [x] Implement high-throughput ANSI SQL batch writer (`OrderBookLiquidityWriter`) into `analytics.fact_order_book_liquidity`.
     - [x] Automated integration test suite (`OrderBookLiquidityJobIntegrationTest`) verifying market depth, one-sided order books, citadel resolution, and idempotency.
-  - [ ] **Step 5.6: Batch Resilience, Orphan Cleanup & Horizontal Scale:**
+  - [x] **Step 5.6: Batch Resilience, Orphan Cleanup & Horizontal Scale:**
     - [x] Implement `ResilientJobExecutionReaper` (`ApplicationRunner`) utilizing PostgreSQL session advisory locks (`pg_try_advisory_lock`), `JobExplorer`, and `JobRepository` to instantly detect severed sockets and mark orphaned executions as `ABANDONED`/`FAILED` with zero wait time and zero false positives on slow network steps.
     - [x] Configure Spring Boot graceful shutdown (`spring.lifecycle.timeout-per-shutdown-phase: 60s`) and SIGTERM handling so container terminations cleanly set status to `STOPPED` for zero-friction restarts.
-    - [ ] Design and configure Remote Partitioning (Manager/Worker pattern via RabbitMQ) for multi-node horizontal scale-out across non-overlapping market regions.
+    - [x] Design and configure Remote Partitioning (Manager/Worker pattern via RabbitMQ) for multi-node horizontal scale-out across non-overlapping market regions and skew-aware item range slicing for heavy trade hubs.
 
 - [ ] **Phase 6: Security Hardening, Containerized Testing & CI/CD**
   - [ ] **Kubernetes Batch Deployment & Process Lifecycle:**

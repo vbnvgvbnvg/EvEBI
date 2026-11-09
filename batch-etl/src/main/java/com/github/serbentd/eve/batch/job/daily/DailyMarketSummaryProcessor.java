@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Objects;
 
 /**
  * Transforms aggregated market order projections into conformed {@link FactMarketDailySummaryEntity} rows,
@@ -27,9 +28,9 @@ public class DailyMarketSummaryProcessor implements ItemProcessor<MarketDailyAgg
 
     public DailyMarketSummaryProcessor(
             DateDimensionService dateDimensionService,
-            @Value("#{jobParameters['targetDate'] ?: T(java.time.LocalDate).now().minusDays(1).toString()}") String targetDateStr) {
+            @Value(DailyMarketSummaryJobConfig.TARGET_DATE_EXPRESSION) String targetDateStr) {
         this.dateDimensionService = dateDimensionService;
-        this.targetDate = LocalDate.parse(targetDateStr);
+        this.targetDate = LocalDate.parse(Objects.requireNonNull(targetDateStr, "Job parameter 'targetDate' is required"));
         this.dateId = DateDimensionService.toDateId(this.targetDate);
     }
 

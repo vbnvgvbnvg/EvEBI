@@ -44,6 +44,12 @@ spring:
     jdbc:
       initialize-schema: never
 
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_AMQP_PORT:5672}
+    username: ${RABBITMQ_DEFAULT_USER:eve_user}
+    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+
 eve:
   batch:
     chunk-size:
@@ -56,6 +62,22 @@ eve:
       connect-timeout: ${EVE_SDE_CONNECT_TIMEOUT:10s}
       read-timeout: ${EVE_SDE_READ_TIMEOUT:60s}
       chunk-size: ${EVE_SDE_CHUNK_SIZE:1000}
+    remote-partitioning:
+      role: ${EVE_BATCH_PARTITION_ROLE:STANDALONE}
+      amqp-flows-enabled: ${EVE_BATCH_PARTITION_AMQP_FLOWS_ENABLED:true}
+      exchange: ${EVE_BATCH_PARTITION_EXCHANGE:eve.batch.partition.exchange}
+      requests-queue: ${EVE_BATCH_PARTITION_REQUESTS_QUEUE:eve.batch.partition.requests}
+      requests-routing-key: ${EVE_BATCH_PARTITION_ROUTING_KEY:eve.batch.partition.requests}
+      dead-letter-exchange: ${EVE_BATCH_PARTITION_DLX:eve.batch.partition.dlx}
+      dead-letter-queue: ${EVE_BATCH_PARTITION_DLQ:eve.batch.partition.dlq}
+      dead-letter-routing-key: ${EVE_BATCH_PARTITION_DLQ_ROUTING_KEY:eve.batch.partition.dlq}
+      poll-interval: ${EVE_BATCH_PARTITION_POLL_INTERVAL:5s}
+      timeout: ${EVE_BATCH_PARTITION_TIMEOUT:30m}
+      worker-concurrency: ${EVE_BATCH_PARTITION_WORKER_CONCURRENCY:4}
+      prefetch-count: ${EVE_BATCH_PARTITION_PREFETCH_COUNT:1}
+      heavy-region-slices:
+        10000002: ${EVE_BATCH_PARTITION_FORGE_SLICES:4}
+        10000043: ${EVE_BATCH_PARTITION_DOMAIN_SLICES:2}
 
 management:
   endpoints:
@@ -66,10 +88,16 @@ management:
   endpoint:
     health:
       show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      # The rabbit contributor is disabled by default on standalone (broker-less) deployments; allow
+      # the readiness group to reference it without failing startup when rabbit health is disabled.
+      validate-group-membership: false
       probes:
         enabled: true
       group:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState, db
+          include: readinessState, db, rabbit
+  health:
+    rabbit:
+      enabled: ${EVE_BATCH_RABBIT_HEALTH_ENABLED:false}

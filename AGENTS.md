@@ -58,6 +58,9 @@
   - When raw SQL upserts are required (such as Spring Batch `ItemWriter` implementations):
     - **PostgreSQL (Production):** Execute native, single-pass atomic upserts (`INSERT ... ON CONFLICT (...) DO UPDATE SET ...`).
     - **H2 (Docker-Free Testing):** When H2 syntax differences prevent PostgreSQL-specific clauses (e.g. `DO UPDATE SET`), detect the dialect at startup (`getDatabaseProductName()`) and bind H2's native single-pass upsert (`MERGE INTO ... KEY(...) VALUES (...)`).
+  - **Timestamp Invariant Preservation:** In-memory H2 `MERGE INTO ... KEY(...) VALUES (...)` will overwrite existing `created_at` timestamps unless guarded. Test upserts must preserve immutable columns via sub-select coalescence (`COALESCE((SELECT created_at FROM table WHERE id = :id), :createdAt)`) to accurately mirror production PostgreSQL `DO UPDATE` semantics.
+  - **Hierarchical Foreign Key Guarding:** When batch-inserting child dimensions (e.g. `dim_station`) referencing parent entities (e.g. `dim_region`) that might exceed seed data, batch writers must atomically register parent placeholder stubs (`INSERT INTO ... ON CONFLICT DO NOTHING`) within the same chunk transaction prior to child record insertion.
+  - **Atomic Idempotent Entity Resolution (No Check-Then-Act):** Across all concurrent components (AMQP listeners, parallel worker steps, background synchronizers), newly discovered dimension stubs or reference entities MUST be inserted using atomic, single-pass database statements (`INSERT ... ON CONFLICT DO NOTHING` / H2 `MERGE INTO`). Application-level check-then-act patterns (`findById` followed by `save`) are strictly prohibited under concurrency, as race conditions will trigger unique constraint violations that abort the enclosing database transaction.
 - **Container Health Probes (Liveness vs. Readiness):**
   - Liveness probe (`/actuator/health/liveness`) must strictly monitor internal JVM state (`livenessState`). Never fail liveness on external database or broker outages.
   - Readiness probe (`/actuator/health/readiness`) must verify downstream dependencies (`readinessState, db, rabbit`).
@@ -75,14 +78,25 @@
   - Annotate service-layer write methods with `@Transactional`.
   - Mark read-only methods with `@Transactional(readOnly = true)` to optimize database flush cycles and dirty-checking overhead.
   - Never execute network I/O (ESI HTTP requests, RabbitMQ calls) inside active database transactions.
+  - **No Proxy Self-Invocation:** Never call `@Transactional` methods directly on `this` from within the same class; this bypasses Spring's AOP proxy and silently executes without transactional context. When isolating network I/O from persistence, orchestrate transactional operations through separate collaborating beans or framework lifecycle hooks (e.g. `StepExecutionListener.afterStep`).
 - **Decoupled Event Publishing:** Ingestion pollers must only fetch, lightly validate, and publish messages to RabbitMQ. They must never perform database persistence directly.
-- **AMQP Generic Collection Deserialization:**
-  - When deserializing JSON arrays into generic collections (`List<T>`), always use `SmartMessageConverter` with `ParameterizedTypeReference<List<T>>` to prevent type erasure to `LinkedHashMap`.
+- **Message Broker Fault Isolation & Deserialization Security:**
+  - **Generic Collection Deserialization:** When deserializing JSON arrays into generic collections (`List<T>`), always use `SmartMessageConverter` with `ParameterizedTypeReference<List<T>>` to prevent type erasure to `LinkedHashMap`.
+  - **Dead-Letter Routing:** Every consumer queue configured with non-requeueing rejection policies (`defaultRequeueRejected=false`) MUST declare and bind a Dead Letter Exchange and Dead Letter Queue (`x-dead-letter-exchange`, `x-dead-letter-routing-key`) to prevent unprocessable or failed messages from being silently discarded.
+  - **Trusted Type Deserialization:** AMQP Jackson message converters MUST explicitly restrict trusted packages to the exact transit payload packages required, preventing arbitrary classpath class deserialization.
+  - **Role-Gated Messaging Topology:** Message producers, consumers, and integration flows must be conditionally activated strictly on nodes matching their operational role (producers publish, consumers consume), preventing cluster nodes from inadvertently processing tasks intended for other node roles.
+- **Batch Processing & Stream Parsing:**
+  - **RFC 4180 Multi-Line CSV Feeds:** Tabular feeds containing quoted text with embedded line breaks must be parsed using Spring Batch's `DefaultRecordSeparatorPolicy` to aggregate physical lines into full logical records before tokenization.
+  - **Thread Interruption Invariant:** When catching checked `InterruptedException` in batch readers or listeners and wrapping into unchecked exceptions (`ItemStreamException`), `Thread.currentThread().interrupt()` must be called immediately prior to rethrowing.
+  - **Stream Resource Cleanup:** Decompression wrappers (e.g. `GZIPInputStream`) must guarantee underlying HTTP or file streams are closed in a `finally` block or `try-with-resources` even if stream header verification fails during wrapper construction.
+  - **Deterministic Temporal Parameterization:** Batch jobs and analytical tasks that generate time-keyed records (daily rollups, snapshot facts) MUST require explicit, validated temporal parameters enforced via `JobParametersValidator`. Readers, item processors, and step partitioners must NEVER dynamically evaluate system clocks (`Instant.now()`, `LocalDate.now()`) at runtime, ensuring idempotent replays, identical keys across distributed workers, and zero dimensional join fragmentation.
+  - **Data-Driven Partitioning & Skew Mitigation:** When partitioning processing steps across continuous domain keys (e.g. entity IDs, ranges), partitioners must NOT use naive linear arithmetic (`[0, max] / N`). When domain data exhibits non-uniform density, partition boundaries must be derived from actual data distribution (such as database quantile functions `NTILE` or grouped distinct keys) to prevent straggler partitions and hot-spot bottlenecks.
 - **Configuration Properties Best Practices (Schema in Java, Defaults in YAML):**
   - All `@ConfigurationProperties` classes MUST be modeled as immutable Java `record` types defining strictly the schema, types, and Jakarta EE validation constraints (`@NotNull`, `@NotBlank`, `@Positive`, `@NotEmpty`, `@Valid`).
   - **Zero Fallback Constants:** Never declare `DEFAULT_*` constants or write null-coalescing/fallback logic in constructor bodies inside `@ConfigurationProperties` records.
   - **Single Source of Truth:** All default values, intervals, thresholds, and fallback parameters MUST be declared exclusively in `application.yml` using environment variable fallback syntax (e.g. `${EVE_POLLER_FIXED_RATE:5m}`).
   - **Fail-Fast Validation:** Missing or out-of-range configuration must cause startup validation to fail immediately rather than being silently replaced by hardcoded defaults.
+  - **Mutually Exclusive State Modeling:** When modeling operational modes or node roles (e.g. `STANDALONE`, `MANAGER`, `WORKER`), use validated enum types exclusively. Never introduce redundant boolean toggles (such as `enabled`) alongside enums; derive operational behavior directly from the enum state (e.g. `role != STANDALONE`) to eliminate contradictory or invalid configuration permutations.
 
 ## Coding Style & Paradigms
 
