@@ -11,7 +11,13 @@
         <loadData tableName="dim_region"
                   schemaName="analytics"
                   file="db/data/dim_regions.csv"
-                  relativeToChangelogFile="false"/>
+                  relativeToChangelogFile="false">
+            <column name="region_id" type="NUMERIC"/>
+            <column name="region_name" type="STRING"/>
+            <column name="description" type="STRING"/>
+            <column name="created_at" type="STRING"/>
+            <column name="updated_at" type="STRING"/>
+        </loadData>
     </changeSet>
 
     <!-- 2. Load Core NPC Trade Hub Stations -->
@@ -20,7 +26,18 @@
         <loadData tableName="dim_station"
                   schemaName="analytics"
                   file="db/data/dim_stations.csv"
-                  relativeToChangelogFile="false"/>
+                  relativeToChangelogFile="false">
+            <column name="station_id" type="NUMERIC"/>
+            <column name="station_name" type="STRING"/>
+            <column name="solar_system_id" type="NUMERIC"/>
+            <column name="solar_system_name" type="STRING"/>
+            <column name="region_id" type="NUMERIC"/>
+            <column name="security_status" type="NUMERIC"/>
+            <column name="security_class" type="STRING"/>
+            <column name="is_structure" type="BOOLEAN"/>
+            <column name="created_at" type="STRING"/>
+            <column name="updated_at" type="STRING"/>
+        </loadData>
     </changeSet>
 
     <!-- 3. Load Core Traded Items -->
@@ -29,7 +46,21 @@
         <loadData tableName="dim_item"
                   schemaName="analytics"
                   file="db/data/dim_items.csv"
-                  relativeToChangelogFile="false"/>
+                  relativeToChangelogFile="false">
+            <column name="type_id" type="NUMERIC"/>
+            <column name="type_name" type="STRING"/>
+            <column name="group_id" type="NUMERIC"/>
+            <column name="group_name" type="STRING"/>
+            <column name="category_id" type="NUMERIC"/>
+            <column name="category_name" type="STRING"/>
+            <column name="market_group_id" type="NUMERIC"/>
+            <column name="volume" type="NUMERIC"/>
+            <column name="packaged_volume" type="NUMERIC"/>
+            <column name="portion_size" type="NUMERIC"/>
+            <column name="is_published" type="BOOLEAN"/>
+            <column name="created_at" type="STRING"/>
+            <column name="updated_at" type="STRING"/>
+        </loadData>
     </changeSet>
 
 </databaseChangeLog>
