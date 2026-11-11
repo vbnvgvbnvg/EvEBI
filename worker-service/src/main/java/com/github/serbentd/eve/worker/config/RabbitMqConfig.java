@@ -66,8 +66,7 @@ public class RabbitMqConfig {
                 if (classId != null && classId.contains("RegionSnapshotCompletedEvent")) {
                     return snapshotType;
                 }
-                if (classId != null && classId.contains("MarketOrderEvent")
-                        && !classId.contains("List") && !classId.contains("ArrayList")) {
+                if (classId != null && classId.endsWith("MarketOrderEvent")) {
                     return singleOrderType;
                 }
                 return orderListType;

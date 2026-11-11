@@ -23,6 +23,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class RabbitMqConfigTest {
 
+    private static final long THE_FORGE_REGION_ID = 10000002L;
+    private static final long TRITANIUM_TYPE_ID = 34L;
+    private static final long SAMPLE_ORDER_ID_1 = 1001L;
+    private static final long SAMPLE_ORDER_ID_2 = 2001L;
+
     private MarketProperties properties;
     private RabbitMqConfig config;
 
@@ -95,8 +100,8 @@ class RabbitMqConfigTest {
         assertThat(list).hasSize(1);
         assertThat(list.get(0)).isInstanceOf(MarketOrderEvent.class);
         MarketOrderEvent event = (MarketOrderEvent) list.get(0);
-        assertThat(event.orderId()).isEqualTo(1001L);
-        assertThat(event.typeId()).isEqualTo(34L);
+        assertThat(event.orderId()).isEqualTo(SAMPLE_ORDER_ID_1);
+        assertThat(event.typeId()).isEqualTo(TRITANIUM_TYPE_ID);
     }
 
     @Test
@@ -122,8 +127,64 @@ class RabbitMqConfigTest {
 
         assertThat(result).isInstanceOf(RegionSnapshotCompletedEvent.class);
         RegionSnapshotCompletedEvent event = (RegionSnapshotCompletedEvent) result;
-        assertThat(event.regionId()).isEqualTo(10000002L);
+        assertThat(event.regionId()).isEqualTo(THE_FORGE_REGION_ID);
         assertThat(event.snapshotId()).isEqualTo("snap-123");
+    }
+
+    @Test
+    void jsonMessageConverter_shouldDeserializeSingleMarketOrderEvent() {
+        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+
+        String json = """
+                {
+                  "orderId": 2001,
+                  "typeId": 34,
+                  "regionId": 10000002,
+                  "systemId": 30000142,
+                  "locationId": 60003760,
+                  "price": 6.50,
+                  "volumeRemain": 500,
+                  "volumeTotal": 1000,
+                  "minVolume": 1,
+                  "duration": 90,
+                  "isBuyOrder": true,
+                  "orderRange": "region",
+                  "snapshotId": "snap-200",
+                  "issued": "2026-09-10T12:00:00Z",
+                  "polledAt": "2026-09-10T12:05:00Z"
+                }
+                """;
+
+        MessageProperties props = new MessageProperties();
+        props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        props.setHeader("__TypeId__", "com.github.serbentd.eve.poller.event.MarketOrderEvent");
+
+        Message message = new Message(json.getBytes(StandardCharsets.UTF_8), props);
+
+        Object result = converter.fromMessage(message);
+
+        assertThat(result).isInstanceOf(MarketOrderEvent.class);
+        MarketOrderEvent event = (MarketOrderEvent) result;
+        assertThat(event.orderId()).isEqualTo(SAMPLE_ORDER_ID_2);
+        assertThat(event.price()).isEqualByComparingTo("6.50");
+    }
+
+    @Test
+    void jsonMessageConverter_whenHeaderMissing_shouldDefaultToOrderList() {
+        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+
+        String jsonList = "[]";
+        MessageProperties props = new MessageProperties();
+        props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        // Note: no __TypeId__ header set
+
+        Message message = new Message(jsonList.getBytes(StandardCharsets.UTF_8), props);
+
+        Object result = converter.fromMessage(message);
+
+        assertThat(result).isInstanceOf(List.class);
+        List<?> list = (List<?>) result;
+        assertThat(list).isEmpty();
     }
 
     @Test
