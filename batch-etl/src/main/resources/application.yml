@@ -11,7 +11,7 @@ spring:
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}
-    username: ${POSTGRES_USER:eve_user}
+    username: ${POSTGRES_USER:worker_dml}
     password: ${POSTGRES_PASSWORD:eve_password}
     driver-class-name: org.postgresql.Driver
     hikari:
@@ -38,6 +38,8 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml
+    user: ${POSTGRES_LIQUIBASE_USER:liquibase_ddl}
+    password: ${POSTGRES_LIQUIBASE_PASSWORD:eve_password}
 
   batch:
     job:

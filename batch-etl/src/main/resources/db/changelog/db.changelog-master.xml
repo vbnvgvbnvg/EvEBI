@@ -31,4 +31,7 @@
     <!-- Spring Batch 5 Metadata Layer -->
     <include file="db/changelog/batch/01-create-spring-batch-metadata.xml"/>
 
+    <!-- Security & Least Privilege Layer -->
+    <include file="db/changelog/security/01-configure-least-privilege-roles.xml"/>
+
 </databaseChangeLog>

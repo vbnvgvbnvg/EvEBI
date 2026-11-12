@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Idempotently create least-privilege roles on PostgreSQL -->
+    <changeSet id="security-001-create-roles" author="serbentd" dbms="postgresql">
+        <comment>Create least-privilege roles (liquibase_ddl, worker_dml, powerbi_reader) if they do not exist</comment>
+        <sql splitStatements="false">
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'liquibase_ddl') THEN
+                    CREATE ROLE liquibase_ddl;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'worker_dml') THEN
+                    CREATE ROLE worker_dml;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'powerbi_reader') THEN
+                    CREATE ROLE powerbi_reader;
+                END IF;
+            END
+            $$;
+        </sql>
+    </changeSet>
+
+    <!-- 2. Configure Principle of Least Privilege (PoLP) grants on staging schema -->
+    <changeSet id="security-002-grant-worker-service-privileges" author="serbentd" dbms="postgresql">
+        <comment>Configure least-privilege grants on staging schema for worker_dml, liquibase_ddl, and powerbi_reader</comment>
+        <sql splitStatements="false">
+            -- Revoke public create privileges on schema staging
+            REVOKE CREATE ON SCHEMA staging FROM PUBLIC;
+
+            -- liquibase_ddl: migration administrator role with DDL management rights
+            GRANT USAGE, CREATE ON SCHEMA staging TO liquibase_ddl;
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA staging TO liquibase_ddl;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA staging TO liquibase_ddl;
+
+            -- worker_dml: operational data manipulation (SELECT, INSERT, UPDATE) on active staging tables
+            GRANT USAGE ON SCHEMA staging TO worker_dml;
+            GRANT SELECT, INSERT, UPDATE ON TABLE staging.market_orders TO worker_dml;
+            REVOKE DELETE, TRUNCATE ON TABLE staging.market_orders FROM worker_dml;
+            REVOKE CREATE ON SCHEMA staging FROM worker_dml;
+
+            -- powerbi_reader: denied operational staging table access
+            REVOKE ALL ON SCHEMA staging FROM powerbi_reader;
+            REVOKE ALL ON TABLE staging.market_orders FROM powerbi_reader;
+
+            -- Default privileges for future tables created in schema staging
+            ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT SELECT, INSERT, UPDATE ON TABLES TO worker_dml;
+
+            DO $$
+            BEGIN
+                IF pg_has_role(CURRENT_USER, 'liquibase_ddl', 'MEMBER') OR CURRENT_USER = 'liquibase_ddl' THEN
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA staging GRANT SELECT, INSERT, UPDATE ON TABLES TO worker_dml;
+                END IF;
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END
+            $$;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>
