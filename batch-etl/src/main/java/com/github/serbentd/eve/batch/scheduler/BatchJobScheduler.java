@@ -70,7 +70,7 @@ public class BatchJobScheduler {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void seedDimensionsOnStartup() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
@@ -84,7 +84,7 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.sde-sync-cron}")
     public void scheduleSdeSync() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
@@ -103,7 +103,7 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.daily-summary-cron}")
     public void scheduleDailySummary() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
@@ -124,7 +124,7 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.liquidity-cron}")
     public void scheduleLiquiditySnapshot() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
@@ -138,6 +138,10 @@ public class BatchJobScheduler {
         } catch (Exception e) {
             log.error("Scheduled order book liquidity job launch failed: {}", e.getMessage(), e);
         }
+    }
+
+    private boolean isSchedulerDisabled() {
+        return isWorkerNode() || batchProperties.kubernetes().isOneShotJob();
     }
 
     private boolean isWorkerNode() {

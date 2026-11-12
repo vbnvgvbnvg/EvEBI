@@ -128,6 +128,54 @@ class BatchJobSchedulerTest {
     }
 
     @Test
+    @DisplayName("Should skip all scheduled triggers and startup seeding when node is running in one-shot mode")
+    void scheduler_whenOneShotMode_shouldSkipExecution() throws Exception {
+        JobLauncher jobLauncher = mock(JobLauncher.class);
+        Job sdeSyncJob = mock(Job.class);
+        Job dailyMarketSummaryJob = mock(Job.class);
+        Job orderBookLiquidityJob = mock(Job.class);
+        DateDimensionService dateDimensionService = mock(DateDimensionService.class);
+        TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
+
+        BatchProperties properties = new BatchProperties(
+                new BatchProperties.ChunkSizeProperties(500, 1000),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
+                new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", MIN_MARKET_REGION_ID, MAX_MARKET_REGION_ID, Duration.ofSeconds(5), Duration.ofSeconds(5)),
+                new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),
+                new BatchProperties.RemotePartitioningProperties(
+                        PartitionRole.STANDALONE, true, "ex", "req", "req", "dlx", "dlq", "dlq",
+                        Duration.ofSeconds(1), Duration.ofSeconds(10), 2, 1, Map.of(THE_FORGE_REGION_ID, 2)
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAILY_MARKET_SUMMARY, false)
+        );
+
+        BatchJobScheduler scheduler = new BatchJobScheduler(
+                jobLauncher,
+                sdeSyncJob,
+                dailyMarketSummaryJob,
+                orderBookLiquidityJob,
+                properties,
+                dateDimensionService,
+                timeDimensionService,
+                new BatchJobParametersFactory(properties)
+        );
+
+        scheduler.seedDimensionsOnStartup();
+        verify(dateDimensionService, never()).seedDateDimension(any(), any());
+        verify(timeDimensionService, never()).seedTimeDimension();
+
+        scheduler.scheduleSdeSync();
+        verify(jobLauncher, never()).run(eq(sdeSyncJob), any());
+
+        scheduler.scheduleDailySummary();
+        verify(jobLauncher, never()).run(eq(dailyMarketSummaryJob), any());
+
+        scheduler.scheduleLiquiditySnapshot();
+        verify(jobLauncher, never()).run(eq(orderBookLiquidityJob), any());
+    }
+
+    @Test
     @DisplayName("Should catch and log exceptions during scheduled runs without propagating")
     void scheduler_whenJobLaunchThrows_shouldCatchGracefully() throws Exception {
         JobLauncher jobLauncher = mock(JobLauncher.class);
