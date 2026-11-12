@@ -55,13 +55,30 @@ eve:
     chunk-size:
       daily-market-summary: ${EVE_BATCH_DAILY_CHUNK_SIZE:500}
       order-book-liquidity: ${EVE_BATCH_LIQUIDITY_CHUNK_SIZE:1000}
+    async-launcher:
+      core-pool-size: ${EVE_BATCH_ASYNC_CORE_POOL_SIZE:2}
+      max-pool-size: ${EVE_BATCH_ASYNC_MAX_POOL_SIZE:4}
+      queue-capacity: ${EVE_BATCH_ASYNC_QUEUE_CAPACITY:10}
     sde:
-      items-url: ${EVE_SDE_ITEMS_URL:https://www.fuzzwork.co.uk/dump/latest/invTypes.csv}
-      stations-url: ${EVE_SDE_STATIONS_URL:https://www.fuzzwork.co.uk/dump/latest/staStations.csv}
+      items-url: ${EVE_SDE_ITEMS_URL:https://www.fuzzwork.co.uk/dump/latest/csv/invTypes.csv}
+      stations-url: ${EVE_SDE_STATIONS_URL:https://www.fuzzwork.co.uk/dump/latest/csv/staStations.csv}
       user-agent: ${EVE_SDE_USER_AGENT:EveBI-BatchETL/1.0.0 (https://github.com/serbentd/EvEBI)}
       connect-timeout: ${EVE_SDE_CONNECT_TIMEOUT:10s}
       read-timeout: ${EVE_SDE_READ_TIMEOUT:60s}
       chunk-size: ${EVE_SDE_CHUNK_SIZE:1000}
+    esi:
+      regions-url: ${EVE_BATCH_ESI_REGIONS_URL:https://esi.evetech.net/latest/universe/regions/}
+      names-url: ${EVE_BATCH_ESI_NAMES_URL:https://esi.evetech.net/latest/universe/names/}
+      user-agent: ${EVE_BATCH_ESI_USER_AGENT:EveBI-BatchETL/1.0.0 (https://github.com/serbentd/EvEBI)}
+      min-region-id: ${EVE_BATCH_ESI_MIN_REGION_ID:10000000}
+      max-region-id: ${EVE_BATCH_ESI_MAX_REGION_ID:11000000}
+      connect-timeout: ${EVE_BATCH_ESI_CONNECT_TIMEOUT:10s}
+      read-timeout: ${EVE_BATCH_ESI_READ_TIMEOUT:30s}
+    schedule:
+      enabled: ${EVE_BATCH_SCHEDULE_ENABLED:true}
+      sde-sync-cron: ${EVE_BATCH_SCHEDULE_SDE_SYNC_CRON:0 0 3 * * SUN}
+      daily-summary-cron: ${EVE_BATCH_SCHEDULE_DAILY_SUMMARY_CRON:0 15 0 * * *}
+      liquidity-cron: ${EVE_BATCH_SCHEDULE_LIQUIDITY_CRON:0 0/15 * * * *}
     remote-partitioning:
       role: ${EVE_BATCH_PARTITION_ROLE:STANDALONE}
       amqp-flows-enabled: ${EVE_BATCH_PARTITION_AMQP_FLOWS_ENABLED:true}

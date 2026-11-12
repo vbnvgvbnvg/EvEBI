@@ -26,6 +26,8 @@ class BatchPropertiesValidationTest {
     private static final long JITA_4_4_STATION_ID = 60003760L;
     private static final long JITA_SYSTEM_ID = 30000142L;
     private static final long THE_FORGE_REGION_ID = 10000002L;
+    private static final long MIN_MARKET_REGION_ID = 10000000L;
+    private static final long MAX_MARKET_REGION_ID = 11000000L;
 
     private static Validator validator;
 
@@ -49,7 +51,10 @@ class BatchPropertiesValidationTest {
     void validate_whenChunkSizeInvalid_shouldDetectViolations() {
         BatchProperties properties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(-1, 0),
+                createValidAsyncLauncherProperties(),
                 createValidSdeProperties(),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
                 createValidRemotePartitioningProperties()
         );
 
@@ -69,6 +74,7 @@ class BatchPropertiesValidationTest {
     void validate_whenSdePropertiesInvalid_shouldDetectViolations() {
         BatchProperties properties = new BatchProperties(
                 createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
                 new BatchProperties.SdeProperties(
                         "",
                         "   ",
@@ -77,6 +83,8 @@ class BatchPropertiesValidationTest {
                         null,
                         -50
                 ),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
                 createValidRemotePartitioningProperties()
         );
 
@@ -96,11 +104,104 @@ class BatchPropertiesValidationTest {
     }
 
     @Test
+    @DisplayName("Should detect violations when async launcher properties contain non-positive values or nulls")
+    void validate_whenAsyncLauncherPropertiesInvalid_shouldDetectViolations() {
+        BatchProperties properties = new BatchProperties(
+                createValidChunkSizes(),
+                new BatchProperties.AsyncLauncherProperties(0, -1, null),
+                createValidSdeProperties(),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
+                createValidRemotePartitioningProperties()
+        );
+
+        Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains(
+                "asyncLauncher.corePoolSize",
+                "asyncLauncher.maxPoolSize",
+                "asyncLauncher.queueCapacity"
+        );
+    }
+
+    @Test
+    @DisplayName("Should detect violations when ESI properties contain blank values or nulls")
+    void validate_whenEsiPropertiesInvalid_shouldDetectViolations() {
+        BatchProperties properties = new BatchProperties(
+                createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
+                createValidSdeProperties(),
+                new BatchProperties.EsiProperties(
+                        "",
+                        "   ",
+                        " ",
+                        null,
+                        null,
+                        null,
+                        null
+                ),
+                createValidScheduleProperties(),
+                createValidRemotePartitioningProperties()
+        );
+
+        Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains(
+                "esi.regionsUrl",
+                "esi.namesUrl",
+                "esi.userAgent",
+                "esi.minRegionId",
+                "esi.maxRegionId",
+                "esi.connectTimeout",
+                "esi.readTimeout"
+        );
+    }
+
+    @Test
+    @DisplayName("Should detect violations when schedule properties contain blank crons or nulls")
+    void validate_whenSchedulePropertiesInvalid_shouldDetectViolations() {
+        BatchProperties properties = new BatchProperties(
+                createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
+                createValidSdeProperties(),
+                createValidEsiProperties(),
+                new BatchProperties.ScheduleProperties(
+                        null,
+                        "",
+                        "  ",
+                        "   "
+                ),
+                createValidRemotePartitioningProperties()
+        );
+
+        Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains(
+                "schedule.enabled",
+                "schedule.sdeSyncCron",
+                "schedule.dailySummaryCron",
+                "schedule.liquidityCron"
+        );
+    }
+
+    @Test
     @DisplayName("Should detect violations when remote partitioning properties are missing or invalid")
     void validate_whenRemotePartitioningPropertiesInvalid_shouldDetectViolations() {
         BatchProperties properties = new BatchProperties(
                 createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
                 createValidSdeProperties(),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
                 new BatchProperties.RemotePartitioningProperties(
                         null,
                         null,
@@ -197,7 +298,10 @@ class BatchPropertiesValidationTest {
     private static BatchProperties createValidProperties() {
         return new BatchProperties(
                 createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
                 createValidSdeProperties(),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
                 createValidRemotePartitioningProperties()
         );
     }
@@ -206,14 +310,39 @@ class BatchPropertiesValidationTest {
         return new BatchProperties.ChunkSizeProperties(500, 1000);
     }
 
+    private static BatchProperties.AsyncLauncherProperties createValidAsyncLauncherProperties() {
+        return new BatchProperties.AsyncLauncherProperties(2, 4, 10);
+    }
+
     private static BatchProperties.SdeProperties createValidSdeProperties() {
         return new BatchProperties.SdeProperties(
-                "https://www.fuzzwork.co.uk/dump/latest/invTypes.csv",
-                "https://www.fuzzwork.co.uk/dump/latest/staStations.csv",
+                "https://www.fuzzwork.co.uk/dump/latest/csv/invTypes.csv",
+                "https://www.fuzzwork.co.uk/dump/latest/csv/staStations.csv",
                 "EveBI-BatchETL/1.0.0 (https://github.com/serbentd/EvEBI)",
                 Duration.ofSeconds(10),
                 Duration.ofSeconds(60),
                 1000
+        );
+    }
+
+    private static BatchProperties.EsiProperties createValidEsiProperties() {
+        return new BatchProperties.EsiProperties(
+                "https://esi.evetech.net/latest/universe/regions/",
+                "https://esi.evetech.net/latest/universe/names/",
+                "EveBI-BatchETL/1.0.0 (https://github.com/serbentd/EvEBI)",
+                MIN_MARKET_REGION_ID,
+                MAX_MARKET_REGION_ID,
+                Duration.ofSeconds(10),
+                Duration.ofSeconds(30)
+        );
+    }
+
+    private static BatchProperties.ScheduleProperties createValidScheduleProperties() {
+        return new BatchProperties.ScheduleProperties(
+                true,
+                "0 0 3 * * SUN",
+                "0 15 0 * * *",
+                "0 0/15 * * * *"
         );
     }
 

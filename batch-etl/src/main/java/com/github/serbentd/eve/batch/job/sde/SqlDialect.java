@@ -12,7 +12,7 @@ import java.util.Locale;
  * upsert syntax of the active database (PostgreSQL in production, H2 in Docker-free tests).
  */
 @Slf4j
-enum SqlDialect {
+public enum SqlDialect {
 
     POSTGRESQL,
     H2;
@@ -23,7 +23,7 @@ enum SqlDialect {
      * Detects the dialect from JDBC metadata. Falls back to {@link #H2} when detection fails,
      * which surfaces as an immediate SQL syntax failure on PostgreSQL rather than silent data corruption.
      */
-    static SqlDialect detect(DataSource dataSource) {
+    public static SqlDialect detect(DataSource dataSource) {
         try (Connection conn = dataSource.getConnection()) {
             String productName = conn.getMetaData().getDatabaseProductName();
             boolean isPostgres = productName != null

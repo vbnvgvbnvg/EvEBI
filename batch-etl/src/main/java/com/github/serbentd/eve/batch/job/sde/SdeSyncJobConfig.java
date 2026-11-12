@@ -28,6 +28,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 public class SdeSyncJobConfig {
 
     public static final String JOB_NAME = "sdeSyncJob";
+    public static final String REGION_STEP_NAME = "sdeRegionSyncStep";
     public static final String ITEM_STEP_NAME = "sdeItemSyncStep";
     public static final String STATION_STEP_NAME = "sdeStationSyncStep";
 
@@ -55,6 +56,17 @@ public class SdeSyncJobConfig {
                 ? stationsUrlParam
                 : batchProperties.sde().stationsUrl();
         return new SdeStationReader(downloadService, "STATIONS", url);
+    }
+
+    @Bean
+    public Step sdeRegionSyncStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            EsiRegionSyncTasklet regionSyncTasklet) {
+
+        return new StepBuilder(REGION_STEP_NAME, jobRepository)
+                .tasklet(regionSyncTasklet, transactionManager)
+                .build();
     }
 
     @Bean
@@ -96,12 +108,14 @@ public class SdeSyncJobConfig {
     @Bean
     public Job sdeSyncJob(
             JobRepository jobRepository,
+            @Qualifier(REGION_STEP_NAME) Step sdeRegionSyncStep,
             @Qualifier(ITEM_STEP_NAME) Step sdeItemSyncStep,
             @Qualifier(STATION_STEP_NAME) Step sdeStationSyncStep,
             AdvisoryLockJobExecutionListener advisoryLockListener) {
 
         return new JobBuilder(JOB_NAME, jobRepository)
-                .start(sdeItemSyncStep)
+                .start(sdeRegionSyncStep)
+                .next(sdeItemSyncStep)
                 .next(sdeStationSyncStep)
                 .listener(advisoryLockListener)
                 .build();

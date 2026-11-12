@@ -87,6 +87,9 @@ abstract class AbstractSdeCsvReader<T> implements ItemStreamReader<T>, StepExecu
                     this.reader = new BufferedReader(new InputStreamReader(modified.inputStream(), StandardCharsets.UTF_8));
                     String headerLine = this.reader.readLine();
                     if (headerLine != null) {
+                        if (headerLine.startsWith("\uFEFF")) {
+                            headerLine = headerLine.substring(1);
+                        }
                         String[] headers = tokenizer.tokenize(headerLine).getValues();
                         for (int i = 0; i < headers.length; i++) {
                             headerMap.put(normalizeHeader(headers[i]), i);
@@ -203,7 +206,7 @@ abstract class AbstractSdeCsvReader<T> implements ItemStreamReader<T>, StepExecu
         if (header == null) {
             return "";
         }
-        return header.trim().toLowerCase(Locale.ROOT).replace("_", "");
+        return header.replace("\uFEFF", "").replace("\"", "").trim().toLowerCase(Locale.ROOT).replace("_", "");
     }
 
     protected String getString(String[] tokens, String... candidates) {

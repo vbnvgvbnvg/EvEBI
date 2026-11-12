@@ -2,11 +2,14 @@ package com.github.serbentd.eve.batch.service;
 
 import com.github.serbentd.eve.batch.domain.DimDateEntity;
 import com.github.serbentd.eve.batch.repository.DimDateRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
@@ -20,12 +23,28 @@ import java.util.Locale;
  * calendar dimension (dim_date) with pre-computed temporal attributes.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class DateDimensionService {
 
     private static final int BATCH_SIZE = 500;
+
+    private static final String DATE_STUB_SQL = """
+            INSERT INTO analytics.dim_date (
+                date_id, full_date, year_num, quarter, month_num, month_name,
+                week_of_year, day_of_month, day_of_week, day_name, is_weekend
+            ) VALUES (
+                :dateId, :fullDate, :yearNum, :quarter, :monthNum, :monthName,
+                :weekOfYear, :dayOfMonth, :dayOfWeek, :dayName, :isWeekend
+            ) ON CONFLICT DO NOTHING
+            """;
+
     private final DimDateRepository dimDateRepository;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    public DateDimensionService(DimDateRepository dimDateRepository, DataSource dataSource) {
+        this.dimDateRepository = dimDateRepository;
+        this.jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+    }
 
     /**
      * Seeds the calendar dimension for the specified date range if not already populated.
@@ -80,16 +99,30 @@ public class DateDimensionService {
     }
 
     /**
-     * Ensures that the specified calendar date exists in dim_date, seeding it if absent.
+     * Ensures that the specified calendar date exists in dim_date atomically via single-pass
+     * {@code ON CONFLICT DO NOTHING}, avoiding concurrency check-then-act race conditions.
      *
      * @param date the date to ensure
-     * @return the persistent DimDateEntity
+     * @return the persistent or constructed DimDateEntity
      */
     @Transactional
     public DimDateEntity ensureDateExists(LocalDate date) {
-        int dateId = toDateId(date);
-        return dimDateRepository.findById(dateId)
-                .orElseGet(() -> dimDateRepository.saveAndFlush(buildDateEntity(date)));
+        DimDateEntity entity = buildDateEntity(date);
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("dateId", entity.getDateId())
+                .addValue("fullDate", entity.getFullDate())
+                .addValue("yearNum", entity.getYearNum())
+                .addValue("quarter", entity.getQuarter())
+                .addValue("monthNum", entity.getMonthNum())
+                .addValue("monthName", entity.getMonthName())
+                .addValue("weekOfYear", entity.getWeekOfYear())
+                .addValue("dayOfMonth", entity.getDayOfMonth())
+                .addValue("dayOfWeek", entity.getDayOfWeek())
+                .addValue("dayName", entity.getDayName())
+                .addValue("isWeekend", entity.getIsWeekend());
+
+        jdbcTemplate.update(DATE_STUB_SQL, params);
+        return dimDateRepository.findById(entity.getDateId()).orElse(entity);
     }
 
     private DimDateEntity buildDateEntity(LocalDate date) {

@@ -84,6 +84,25 @@ class SdeReadersTest {
     }
 
     @Test
+    @DisplayName("SdeItemReader should handle UTF-8 BOM in header line")
+    void itemReader_shouldHandleUtf8BomInHeader() throws Exception {
+        String csv = "\uFEFF\"typeID\",\"typeName\",\"groupID\",\"marketGroupID\",\"volume\",\"portionSize\",\"published\"\n"
+                + "34,\"Tritanium\",18,1857,0.01,1,1\n";
+        stubModified(ITEMS_SOURCE, ITEMS_URL, csv, null);
+
+        SdeItemReader reader = new SdeItemReader(downloadService, ITEMS_SOURCE, ITEMS_URL);
+        reader.open(new ExecutionContext());
+
+        SdeItemDto row = reader.read();
+        assertThat(row).isNotNull();
+        assertThat(row.typeId()).isEqualTo(TRITANIUM_TYPE_ID);
+        assertThat(row.typeName()).isEqualTo("Tritanium");
+
+        assertThat(reader.read()).isNull();
+        reader.close();
+    }
+
+    @Test
     @DisplayName("SdeItemReader should join multi-line quoted fields into a single logical record")
     void itemReader_shouldParseMultiLineQuotedDescription() throws Exception {
         String csv = """

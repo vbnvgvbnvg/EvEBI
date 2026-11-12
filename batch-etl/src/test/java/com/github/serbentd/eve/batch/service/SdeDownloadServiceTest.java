@@ -42,6 +42,9 @@ class SdeDownloadServiceTest {
 
     private static final String ITEMS_URL = "https://example.com/items.csv";
     private static final String STATIONS_URL = "https://example.com/stations.csv";
+    private static final long THE_FORGE_REGION_ID = 10000002L;
+    private static final long MIN_MARKET_REGION_ID = 10000000L;
+    private static final long MAX_MARKET_REGION_ID = 11000000L;
 
     private final SdeMetadataRepository sdeMetadataRepository;
     private final ResourceLoader resourceLoader;
@@ -60,6 +63,7 @@ class SdeDownloadServiceTest {
 
         BatchProperties batchProperties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
                 new BatchProperties.SdeProperties(
                         ITEMS_URL,
                         STATIONS_URL,
@@ -67,6 +71,21 @@ class SdeDownloadServiceTest {
                         Duration.ofSeconds(5),
                         Duration.ofSeconds(10),
                         500
+                ),
+                new BatchProperties.EsiProperties(
+                        "http://localhost/regions",
+                        "http://localhost/names",
+                        "EveBI-Test/1.0",
+                        MIN_MARKET_REGION_ID,
+                        MAX_MARKET_REGION_ID,
+                        Duration.ofSeconds(5),
+                        Duration.ofSeconds(10)
+                ),
+                new BatchProperties.ScheduleProperties(
+                        false,
+                        "0 0 3 * * SUN",
+                        "0 15 0 * * *",
+                        "0 0/15 * * * *"
                 ),
                 new BatchProperties.RemotePartitioningProperties(
                         PartitionRole.STANDALONE,
@@ -81,7 +100,7 @@ class SdeDownloadServiceTest {
                         Duration.ofMinutes(10),
                         2,
                         1,
-                        java.util.Map.of(10000002L, 2)
+                        java.util.Map.of(THE_FORGE_REGION_ID, 2)
                 )
         );
         this.downloadService = new SdeDownloadService(
