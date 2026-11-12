@@ -131,6 +131,8 @@ public class TimeDimensionService {
             eveTimeBucket = "EU_PRIME";
         } else if (hour <= 4) {
             eveTimeBucket = "US_PRIME";
+        } else if (hour <= 10) {
+            eveTimeBucket = "AU_ASIA_TIME";
         } else {
             eveTimeBucket = "OFF_PEAK";
         }

@@ -206,7 +206,10 @@ class JobExecutionControllerTest {
 
         JobExplorer jobExplorer = mock(JobExplorer.class);
         Job job = mock(Job.class);
+        when(job.getName()).thenReturn("testJob");
         EsiRegionSyncService esiRegionSyncService = mock(EsiRegionSyncService.class);
+        when(esiRegionSyncService.syncRegions())
+                .thenThrow(new IllegalStateException("Failed to synchronize ESI regions"));
         DateDimensionService dateDimensionService = mock(DateDimensionService.class);
         TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
 
@@ -221,6 +224,9 @@ class JobExecutionControllerTest {
                 .isInstanceOf(ResponseStatusException.class);
         assertThatThrownBy(() -> controller.triggerLiquidity("2026-01-01T12:00:00Z"))
                 .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(controller::triggerRegionsSync)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to synchronize ESI regions");
     }
 
     @Test
@@ -229,8 +235,11 @@ class JobExecutionControllerTest {
         JobLauncher launcher = mock(JobLauncher.class);
         JobExplorer explorer = mock(JobExplorer.class);
         Job sdeJob = mock(Job.class);
+        when(sdeJob.getName()).thenReturn(SdeSyncJobConfig.JOB_NAME);
         Job dailyJob = mock(Job.class);
+        when(dailyJob.getName()).thenReturn(DailyMarketSummaryJobConfig.JOB_NAME);
         Job liquidityJob = mock(Job.class);
+        when(liquidityJob.getName()).thenReturn(OrderBookLiquidityJobConfig.JOB_NAME);
 
         when(explorer.findRunningJobExecutions(SdeSyncJobConfig.JOB_NAME))
                 .thenReturn(Set.of(new JobExecution(101L)));
@@ -267,5 +276,56 @@ class JobExecutionControllerTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .matches(e -> ((ResponseStatusException) e).getStatusCode().value() == 409)
                 .hasMessageContaining("already in progress");
+    }
+
+    @Test
+    @DisplayName("Should map JobExecutionAlreadyRunningException to HTTP 409 Conflict")
+    void triggerJobs_whenAlreadyRunningException_shouldThrowConflict() throws Exception {
+        JobLauncher launcher = mock(JobLauncher.class);
+        when(launcher.run(any(), any()))
+                .thenThrow(new org.springframework.batch.core.repository.JobExecutionAlreadyRunningException("Already running"));
+
+        JobExplorer explorer = mock(JobExplorer.class);
+        Job job = mock(Job.class);
+        when(job.getName()).thenReturn("testJob");
+
+        JobExecutionController controller = new JobExecutionController(
+                launcher, explorer, job, job, job,
+                mock(EsiRegionSyncService.class), mock(DateDimensionService.class), mock(TimeDimensionService.class)
+        );
+
+        assertThatThrownBy(() -> controller.triggerSdeSync(null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(e -> ((ResponseStatusException) e).getStatusCode().value() == 409)
+                .hasMessageContaining("testJob");
+    }
+
+    @Test
+    @DisplayName("Concurrent liquidity triggers should result in exactly one 202 and all others 409")
+    void triggerLiquidity_concurrentCalls_shouldReturn202And409() throws Exception {
+        int threadCount = 5;
+        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+        java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
+        java.util.List<java.util.concurrent.Future<Integer>> futures = new java.util.ArrayList<>();
+
+        for (int i = 0; i < threadCount; i++) {
+            futures.add(executor.submit(() -> {
+                startLatch.await();
+                return mockMvc.perform(post(LIQUIDITY_URL))
+                        .andReturn().getResponse().getStatus();
+            }));
+        }
+
+        startLatch.countDown();
+        java.util.List<Integer> statuses = new java.util.ArrayList<>();
+        for (java.util.concurrent.Future<Integer> future : futures) {
+            statuses.add(future.get());
+        }
+        executor.shutdown();
+
+        assertThat(statuses).contains(202);
+        assertThat(statuses).containsOnly(202, 409);
+        long count202 = statuses.stream().filter(s -> s == 202).count();
+        assertThat(count202).isEqualTo(1);
     }
 }

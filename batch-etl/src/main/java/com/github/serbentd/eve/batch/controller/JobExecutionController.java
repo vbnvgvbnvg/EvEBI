@@ -13,9 +13,11 @@ import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
 import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,6 +37,8 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * REST API controller exposing endpoints for triggering batch ETL jobs, synchronizing EVE SDE/ESI dimensions,
@@ -53,6 +57,7 @@ public class JobExecutionController {
     private final EsiRegionSyncService esiRegionSyncService;
     private final DateDimensionService dateDimensionService;
     private final TimeDimensionService timeDimensionService;
+    private final ConcurrentMap<String, Object> jobLaunchLocks = new ConcurrentHashMap<>();
 
     public JobExecutionController(
             @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
@@ -81,33 +86,26 @@ public class JobExecutionController {
             @RequestParam(name = "itemsUrl", required = false) String itemsUrl,
             @RequestParam(name = "stationsUrl", required = false) String stationsUrl) {
 
-        ensureJobNotRunning(SdeSyncJobConfig.JOB_NAME);
+        JobParametersBuilder builder = new JobParametersBuilder()
+                .addLong("timestamp", System.currentTimeMillis());
 
-        try {
-            JobParametersBuilder builder = new JobParametersBuilder()
-                    .addLong("timestamp", System.currentTimeMillis());
-
-            if (itemsUrl != null && !itemsUrl.isBlank()) {
-                builder.addString("itemsUrl", itemsUrl);
-            }
-            if (stationsUrl != null && !stationsUrl.isBlank()) {
-                builder.addString("stationsUrl", stationsUrl);
-            }
-
-            JobExecution execution = asyncJobLauncher.run(sdeSyncJob, builder.toJobParameters());
-            log.info("Dispatched {} execution id: {}", SdeSyncJobConfig.JOB_NAME, execution.getId());
-
-            return ResponseEntity.accepted().body(new JobLaunchResponseDto(
-                    execution.getId(),
-                    SdeSyncJobConfig.JOB_NAME,
-                    execution.getStatus().toString(),
-                    toInstant(execution.getStartTime()),
-                    "SDE synchronization job dispatched asynchronously"
-            ));
-        } catch (Exception e) {
-            log.error("Failed to launch sdeSyncJob: {}", e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to launch SDE sync job: " + e.getMessage(), e);
+        if (itemsUrl != null && !itemsUrl.isBlank()) {
+            builder.addString("itemsUrl", itemsUrl);
         }
+        if (stationsUrl != null && !stationsUrl.isBlank()) {
+            builder.addString("stationsUrl", stationsUrl);
+        }
+
+        JobExecution execution = launchJobSafely(sdeSyncJob, builder.toJobParameters());
+        log.info("Dispatched {} execution id: {}", SdeSyncJobConfig.JOB_NAME, execution.getId());
+
+        return ResponseEntity.accepted().body(new JobLaunchResponseDto(
+                execution.getId(),
+                SdeSyncJobConfig.JOB_NAME,
+                execution.getStatus().toString(),
+                toInstant(execution.getStartTime()),
+                "SDE synchronization job dispatched asynchronously"
+        ));
     }
 
     /**
@@ -174,28 +172,21 @@ public class JobExecutionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid targetDate format (expected YYYY-MM-DD): " + resolvedDate);
         }
 
-        ensureJobNotRunning(DailyMarketSummaryJobConfig.JOB_NAME);
+        JobExecution execution = launchJobSafely(dailyMarketSummaryJob, new JobParametersBuilder()
+                .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, resolvedDate)
+                .addLong("timestamp", System.currentTimeMillis())
+                .toJobParameters());
 
-        try {
-            JobExecution execution = asyncJobLauncher.run(dailyMarketSummaryJob, new JobParametersBuilder()
-                    .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, resolvedDate)
-                    .addLong("timestamp", System.currentTimeMillis())
-                    .toJobParameters());
+        log.info("Dispatched {} for targetDate: {}, execution id: {}",
+                DailyMarketSummaryJobConfig.JOB_NAME, resolvedDate, execution.getId());
 
-            log.info("Dispatched {} for targetDate: {}, execution id: {}",
-                    DailyMarketSummaryJobConfig.JOB_NAME, resolvedDate, execution.getId());
-
-            return ResponseEntity.accepted().body(new JobLaunchResponseDto(
-                    execution.getId(),
-                    DailyMarketSummaryJobConfig.JOB_NAME,
-                    execution.getStatus().toString(),
-                    toInstant(execution.getStartTime()),
-                    "Daily market summary job dispatched asynchronously for date: " + resolvedDate
-            ));
-        } catch (Exception e) {
-            log.error("Failed to launch dailyMarketSummaryJob: {}", e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to launch daily market summary job: " + e.getMessage(), e);
-        }
+        return ResponseEntity.accepted().body(new JobLaunchResponseDto(
+                execution.getId(),
+                DailyMarketSummaryJobConfig.JOB_NAME,
+                execution.getStatus().toString(),
+                toInstant(execution.getStartTime()),
+                "Daily market summary job dispatched asynchronously for date: " + resolvedDate
+        ));
     }
 
     /**
@@ -216,28 +207,21 @@ public class JobExecutionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid snapshotTime format (expected ISO-8601 Instant): " + resolvedTime);
         }
 
-        ensureJobNotRunning(OrderBookLiquidityJobConfig.JOB_NAME);
+        JobExecution execution = launchJobSafely(orderBookLiquidityJob, new JobParametersBuilder()
+                .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, resolvedTime)
+                .addLong("timestamp", System.currentTimeMillis())
+                .toJobParameters());
 
-        try {
-            JobExecution execution = asyncJobLauncher.run(orderBookLiquidityJob, new JobParametersBuilder()
-                    .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, resolvedTime)
-                    .addLong("timestamp", System.currentTimeMillis())
-                    .toJobParameters());
+        log.info("Dispatched {} for snapshotTime: {}, execution id: {}",
+                OrderBookLiquidityJobConfig.JOB_NAME, resolvedTime, execution.getId());
 
-            log.info("Dispatched {} for snapshotTime: {}, execution id: {}",
-                    OrderBookLiquidityJobConfig.JOB_NAME, resolvedTime, execution.getId());
-
-            return ResponseEntity.accepted().body(new JobLaunchResponseDto(
-                    execution.getId(),
-                    OrderBookLiquidityJobConfig.JOB_NAME,
-                    execution.getStatus().toString(),
-                    toInstant(execution.getStartTime()),
-                    "Order book liquidity job dispatched asynchronously for snapshot: " + resolvedTime
-            ));
-        } catch (Exception e) {
-            log.error("Failed to launch orderBookLiquidityJob: {}", e.getMessage(), e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to launch order book liquidity job: " + e.getMessage(), e);
-        }
+        return ResponseEntity.accepted().body(new JobLaunchResponseDto(
+                execution.getId(),
+                OrderBookLiquidityJobConfig.JOB_NAME,
+                execution.getStatus().toString(),
+                toInstant(execution.getStartTime()),
+                "Order book liquidity job dispatched asynchronously for snapshot: " + resolvedTime
+        ));
     }
 
     /**
@@ -272,6 +256,25 @@ public class JobExecutionController {
                 toInstant(execution.getEndTime()),
                 stepDtos
         ));
+    }
+
+    private JobExecution launchJobSafely(Job job, JobParameters jobParameters) {
+        String jobName = job.getName();
+        Object lock = jobLaunchLocks.computeIfAbsent(jobName, k -> new Object());
+        synchronized (lock) {
+            ensureJobNotRunning(jobName);
+            try {
+                return asyncJobLauncher.run(job, jobParameters);
+            } catch (JobExecutionAlreadyRunningException e) {
+                log.warn("Job '{}' is already running: {}", jobName, e.getMessage());
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Job '" + jobName + "' is currently executing", e);
+            } catch (Exception e) {
+                log.error("Failed to launch {}: {}", jobName, e.getMessage(), e);
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                        "Failed to launch " + jobName + ": " + e.getMessage(), e);
+            }
+        }
     }
 
     private void ensureJobNotRunning(String jobName) {
