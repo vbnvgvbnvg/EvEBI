@@ -33,6 +33,7 @@ public class OrderBookLiquidityProcessor implements ItemProcessor<OrderBookLiqui
     private final DateDimensionService dateDimensionService;
     private final TimeDimensionService timeDimensionService;
     private final CitadelDimensionResolver citadelDimensionResolver;
+    private boolean temporalDimensionsEnsured = false;
 
     public OrderBookLiquidityProcessor(
             @Value(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_EXPRESSION) String snapshotTimeStr,
@@ -54,8 +55,11 @@ public class OrderBookLiquidityProcessor implements ItemProcessor<OrderBookLiqui
     @Override
     public FactOrderBookLiquidityEntity process(OrderBookLiquidityAggregationDto item) {
         // Ensure temporal dimension rows exist in current transaction
-        dateDimensionService.ensureDateExists(date);
-        timeDimensionService.ensureTimeExists(time);
+        if (!temporalDimensionsEnsured) {
+            dateDimensionService.ensureDateExists(date);
+            timeDimensionService.ensureTimeExists(time);
+            temporalDimensionsEnsured = true;
+        }
 
         // Resolve station/citadel dimension (handles late-arriving Upwell structures)
         citadelDimensionResolver.resolveOrCreate(item.locationId(), item.systemId(), item.regionId());

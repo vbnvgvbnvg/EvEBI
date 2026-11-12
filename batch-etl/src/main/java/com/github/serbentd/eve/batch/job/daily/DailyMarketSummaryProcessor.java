@@ -25,6 +25,7 @@ public class DailyMarketSummaryProcessor implements ItemProcessor<MarketDailyAgg
     private final DateDimensionService dateDimensionService;
     private final LocalDate targetDate;
     private final int dateId;
+    private boolean dateEnsured = false;
 
     public DailyMarketSummaryProcessor(
             DateDimensionService dateDimensionService,
@@ -36,7 +37,10 @@ public class DailyMarketSummaryProcessor implements ItemProcessor<MarketDailyAgg
 
     @Override
     public FactMarketDailySummaryEntity process(MarketDailyAggregationDto dto) {
-        dateDimensionService.ensureDateExists(targetDate);
+        if (!dateEnsured) {
+            dateDimensionService.ensureDateExists(targetDate);
+            dateEnsured = true;
+        }
         Instant now = Instant.now();
 
         return FactMarketDailySummaryEntity.builder()

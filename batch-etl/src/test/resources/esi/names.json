@@ -1,0 +1,17 @@
+[
+  {
+    "id": 10000001,
+    "name": "Derelik",
+    "category": "region"
+  },
+  {
+    "id": 10000002,
+    "name": "The Forge",
+    "category": "region"
+  },
+  {
+    "id": 10000003,
+    "name": "Lonetrek",
+    "category": "region"
+  }
+]

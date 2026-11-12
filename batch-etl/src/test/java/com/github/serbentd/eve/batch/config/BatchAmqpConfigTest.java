@@ -33,6 +33,8 @@ class BatchAmqpConfigTest {
     private static final String TEST_DLQ = "test.dlq";
     private static final String TEST_DLQ_ROUTING_KEY = "test.dlq.routingKey";
     private static final long THE_FORGE_REGION_ID = 10000002L;
+    private static final long MIN_MARKET_REGION_ID = 10000000L;
+    private static final long MAX_MARKET_REGION_ID = 11000000L;
 
     private final BatchAmqpConfig batchAmqpConfig = new BatchAmqpConfig();
 
@@ -145,6 +147,7 @@ class BatchAmqpConfigTest {
     private static BatchProperties createTestProperties() {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(10, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
                 new BatchProperties.SdeProperties(
                         "http://localhost/items.csv",
                         "http://localhost/stations.csv",
@@ -152,6 +155,21 @@ class BatchAmqpConfigTest {
                         Duration.ofSeconds(5),
                         Duration.ofSeconds(5),
                         10
+                ),
+                new BatchProperties.EsiProperties(
+                        "http://localhost/regions",
+                        "http://localhost/names",
+                        "test-agent",
+                        MIN_MARKET_REGION_ID,
+                        MAX_MARKET_REGION_ID,
+                        Duration.ofSeconds(5),
+                        Duration.ofSeconds(5)
+                ),
+                new BatchProperties.ScheduleProperties(
+                        false,
+                        "0 0 3 * * SUN",
+                        "0 15 0 * * *",
+                        "0 0/15 * * * *"
                 ),
                 new BatchProperties.RemotePartitioningProperties(
                         PartitionRole.MANAGER,

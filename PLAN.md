@@ -103,8 +103,9 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [ ] Configure least-privilege PostgreSQL roles via Liquibase (`worker_dml`, `liquibase_ddl`, `powerbi_reader` read-only).
     - [ ] Configure RabbitMQ dedicated virtual host (`/eve_market`) with scoped producer write-only and consumer read-only access.
     - [ ] Enforce SSL/TLS transport encryption (`sslmode=require` for Postgres, `amqps://` for RabbitMQ).
-  - [ ] **Management Endpoint & Actuator Security:**
+  - [ ] **Management Endpoint & Batch API Security:**
     - [ ] Configure Spring Security to protect sensitive Actuator endpoints while preserving unauthenticated access for container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`).
+    - [ ] Secure operational batch REST triggers (`/api/v1/jobs/**`) using Spring Security (API key, mTLS, or role-based authorization) or isolate them to an internal cluster management network interface.
   - [ ] **Supply Chain & Secrets Management:**
     - [ ] Externalize all production secrets and enforce zero plain-text credential commits.
     - [ ] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.

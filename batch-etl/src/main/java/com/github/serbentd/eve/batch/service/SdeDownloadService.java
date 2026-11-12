@@ -4,6 +4,7 @@ import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.domain.SdeMetadataEntity;
 import com.github.serbentd.eve.batch.repository.SdeMetadataRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,7 +45,7 @@ public class SdeDownloadService {
     public SdeDownloadService(BatchProperties batchProperties,
                               SdeMetadataRepository sdeMetadataRepository,
                               ResourceLoader resourceLoader,
-                              HttpClient httpClient) {
+                              @Qualifier("sdeHttpClient") HttpClient httpClient) {
         this.batchProperties = batchProperties;
         this.sdeMetadataRepository = sdeMetadataRepository;
         this.resourceLoader = resourceLoader;

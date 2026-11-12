@@ -40,6 +40,10 @@ eve:
     chunk-size:
       daily-market-summary: 10
       order-book-liquidity: 10
+    async-launcher:
+      core-pool-size: 2
+      max-pool-size: 4
+      queue-capacity: 10
     sde:
       items-url: http://localhost:8089/dump/latest/invTypes.csv
       stations-url: http://localhost:8089/dump/latest/staStations.csv
@@ -47,6 +51,19 @@ eve:
       connect-timeout: 5s
       read-timeout: 5s
       chunk-size: 10
+    esi:
+      regions-url: classpath:/esi/regions.json
+      names-url: classpath:/esi/names.json
+      user-agent: EveBI-Test/1.0
+      min-region-id: 10000000
+      max-region-id: 11000000
+      connect-timeout: 5s
+      read-timeout: 5s
+    schedule:
+      enabled: false
+      sde-sync-cron: "0 0 3 * * SUN"
+      daily-summary-cron: "0 15 0 * * *"
+      liquidity-cron: "0 0/15 * * * *"
     remote-partitioning:
       role: STANDALONE
       amqp-flows-enabled: true

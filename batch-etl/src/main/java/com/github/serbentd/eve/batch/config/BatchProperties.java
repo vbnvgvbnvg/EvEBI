@@ -19,7 +19,10 @@ import java.util.Map;
 @Validated
 public record BatchProperties(
         @Valid @NotNull ChunkSizeProperties chunkSize,
+        @Valid @NotNull AsyncLauncherProperties asyncLauncher,
         @Valid @NotNull SdeProperties sde,
+        @Valid @NotNull EsiProperties esi,
+        @Valid @NotNull ScheduleProperties schedule,
         @Valid @NotNull RemotePartitioningProperties remotePartitioning
 ) {
 
@@ -32,6 +35,15 @@ public record BatchProperties(
     ) {}
 
     /**
+     * Configuration properties for the asynchronous batch job launcher thread pool.
+     */
+    public record AsyncLauncherProperties(
+            @NotNull @Positive Integer corePoolSize,
+            @NotNull @Positive Integer maxPoolSize,
+            @NotNull @Positive Integer queueCapacity
+    ) {}
+
+    /**
      * Configuration properties for EVE Static Data Export (SDE) HTTP downloads and batch sync.
      */
     public record SdeProperties(
@@ -41,6 +53,29 @@ public record BatchProperties(
             @NotNull Duration connectTimeout,
             @NotNull Duration readTimeout,
             @NotNull @Positive Integer chunkSize
+    ) {}
+
+    /**
+     * Configuration properties for ESI Universe API synchronization (bulk market region resolution).
+     */
+    public record EsiProperties(
+            @NotBlank String regionsUrl,
+            @NotBlank String namesUrl,
+            @NotBlank String userAgent,
+            @NotNull Long minRegionId,
+            @NotNull Long maxRegionId,
+            @NotNull Duration connectTimeout,
+            @NotNull Duration readTimeout
+    ) {}
+
+    /**
+     * Configuration properties for scheduled cron execution of analytical and SDE jobs.
+     */
+    public record ScheduleProperties(
+            @NotNull Boolean enabled,
+            @NotBlank String sdeSyncCron,
+            @NotBlank String dailySummaryCron,
+            @NotBlank String liquidityCron
     ) {}
 
     /**

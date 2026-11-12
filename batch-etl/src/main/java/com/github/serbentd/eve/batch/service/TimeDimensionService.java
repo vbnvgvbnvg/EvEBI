@@ -2,11 +2,14 @@ package com.github.serbentd.eve.batch.service;
 
 import com.github.serbentd.eve.batch.domain.DimTimeEntity;
 import com.github.serbentd.eve.batch.repository.DimTimeRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,12 +19,28 @@ import java.util.List;
  * time-of-day dimension (dim_time) with clock attributes and EVE Online player timezone buckets.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class TimeDimensionService {
 
     private static final int MINUTES_PER_DAY = 1440;
+
+    private static final String TIME_STUB_SQL = """
+            INSERT INTO analytics.dim_time (
+                time_id, time_value, hour_24, hour_12, minute_of_hour,
+                time_formatted_24, time_formatted_12, am_pm, day_part, eve_time_bucket
+            ) VALUES (
+                :timeId, :timeValue, :hour24, :hour12, :minuteOfHour,
+                :timeFormatted24, :timeFormatted12, :amPm, :dayPart, :eveTimeBucket
+            ) ON CONFLICT DO NOTHING
+            """;
+
     private final DimTimeRepository dimTimeRepository;
+    private final NamedParameterJdbcTemplate jdbcTemplate;
+
+    public TimeDimensionService(DimTimeRepository dimTimeRepository, DataSource dataSource) {
+        this.dimTimeRepository = dimTimeRepository;
+        this.jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
+    }
 
     /**
      * Seeds the 1,440 minutes of a 24-hour day into dim_time if not already present.
@@ -61,16 +80,29 @@ public class TimeDimensionService {
     }
 
     /**
-     * Ensures that the specified minute exists in dim_time, seeding it if absent.
+     * Ensures that the specified minute exists in dim_time atomically via single-pass
+     * {@code ON CONFLICT DO NOTHING}, avoiding concurrency check-then-act race conditions.
      *
      * @param time the time to ensure
-     * @return the persistent DimTimeEntity
+     * @return the persistent or constructed DimTimeEntity
      */
     @Transactional
     public DimTimeEntity ensureTimeExists(LocalTime time) {
-        int timeId = toTimeId(time);
-        return dimTimeRepository.findById(timeId)
-                .orElseGet(() -> dimTimeRepository.saveAndFlush(buildTimeEntity(time.getHour(), time.getMinute())));
+        DimTimeEntity entity = buildTimeEntity(time.getHour(), time.getMinute());
+        SqlParameterSource params = new MapSqlParameterSource()
+                .addValue("timeId", entity.getTimeId())
+                .addValue("timeValue", entity.getTimeValue())
+                .addValue("hour24", entity.getHour24())
+                .addValue("hour12", entity.getHour12())
+                .addValue("minuteOfHour", entity.getMinuteOfHour())
+                .addValue("timeFormatted24", entity.getTimeFormatted24())
+                .addValue("timeFormatted12", entity.getTimeFormatted12())
+                .addValue("amPm", entity.getAmPm())
+                .addValue("dayPart", entity.getDayPart())
+                .addValue("eveTimeBucket", entity.getEveTimeBucket());
+
+        jdbcTemplate.update(TIME_STUB_SQL, params);
+        return dimTimeRepository.findById(entity.getTimeId()).orElse(entity);
     }
 
     private DimTimeEntity buildTimeEntity(int hour, int minute) {
@@ -99,7 +131,7 @@ public class TimeDimensionService {
             eveTimeBucket = "EU_PRIME";
         } else if (hour <= 4) {
             eveTimeBucket = "US_PRIME";
-        } else if (hour >= 5 && hour <= 10) {
+        } else if (hour <= 10) {
             eveTimeBucket = "AU_ASIA_TIME";
         } else {
             eveTimeBucket = "OFF_PEAK";

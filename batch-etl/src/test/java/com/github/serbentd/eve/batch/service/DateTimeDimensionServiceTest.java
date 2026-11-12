@@ -99,6 +99,12 @@ class DateTimeDimensionServiceTest {
         assertThat(downtimeOpt).isPresent();
         assertThat(downtimeOpt.get().getEveTimeBucket()).isEqualTo("DOWNTIME_WINDOW");
 
+        // Verify AU/Asia Time: 07:00 UTC
+        LocalTime auAsia = LocalTime.of(7, 0);
+        Optional<DimTimeEntity> auAsiaOpt = dimTimeRepository.findByTimeValue(auAsia);
+        assertThat(auAsiaOpt).isPresent();
+        assertThat(auAsiaOpt.get().getEveTimeBucket()).isEqualTo("AU_ASIA_TIME");
+
         // Idempotency: second run should skip
         long secondRun = timeDimensionService.seedTimeDimension();
         assertThat(secondRun).isZero();
