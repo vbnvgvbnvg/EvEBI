@@ -28,6 +28,7 @@ public class AdvisoryLockManager implements DisposableBean {
     private final boolean isPostgres;
     private final Map<Long, Connection> heldConnections = new ConcurrentHashMap<>();
     private final Set<Long> simulatedLocks = ConcurrentHashMap.newKeySet();
+    private final Set<Long> localLocks = ConcurrentHashMap.newKeySet();
 
     public AdvisoryLockManager(DataSource dataSource) {
         this.dataSource = dataSource;
@@ -52,6 +53,7 @@ public class AdvisoryLockManager implements DisposableBean {
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next() && rs.getBoolean(1)) {
                             Connection previous = heldConnections.put(lockId, conn);
+                            localLocks.add(lockId);
                             if (previous != null) {
                                 closeQuietly(previous);
                             }
@@ -67,7 +69,11 @@ public class AdvisoryLockManager implements DisposableBean {
                 return false;
             }
         } else {
-            return simulatedLocks.add(lockId);
+            if (simulatedLocks.add(lockId)) {
+                localLocks.add(lockId);
+                return true;
+            }
+            return false;
         }
     }
 
@@ -79,6 +85,7 @@ public class AdvisoryLockManager implements DisposableBean {
      * @return true if released
      */
     public boolean unlock(long lockId) {
+        localLocks.remove(lockId);
         if (isPostgres) {
             Connection conn = heldConnections.remove(lockId);
             if (conn != null) {
@@ -100,8 +107,19 @@ public class AdvisoryLockManager implements DisposableBean {
             }
             return false;
         } else {
+            localLocks.remove(lockId);
             return simulatedLocks.remove(lockId);
         }
+    }
+
+    /**
+     * Checks if this instance currently holds the advisory lock for the given execution/lock ID.
+     *
+     * @param lockId unique lock identifier
+     * @return true if held by this JVM instance
+     */
+    public boolean isLockHeldLocally(long lockId) {
+        return localLocks.contains(lockId);
     }
 
     /**
@@ -116,6 +134,7 @@ public class AdvisoryLockManager implements DisposableBean {
      */
     public void clearSimulatedLocks() {
         simulatedLocks.clear();
+        localLocks.clear();
     }
 
     private boolean detectPostgres(DataSource dataSource) {
@@ -143,6 +162,7 @@ public class AdvisoryLockManager implements DisposableBean {
             }
         });
         heldConnections.clear();
+        localLocks.clear();
     }
 
     private void closeQuietly(Connection conn) {

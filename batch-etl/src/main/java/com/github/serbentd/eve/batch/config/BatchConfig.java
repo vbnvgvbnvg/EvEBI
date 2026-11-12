@@ -2,6 +2,7 @@ package com.github.serbentd.eve.batch.config;
 
 import org.springframework.batch.core.configuration.support.DefaultBatchConfiguration;
 import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.launch.support.TaskExecutorJobLauncher;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.integration.config.annotation.EnableBatchIntegration;
@@ -42,6 +43,12 @@ public class BatchConfig extends DefaultBatchConfiguration {
     }
 
     @Bean
+    @Override
+    public JobOperator jobOperator() throws org.springframework.batch.core.configuration.BatchConfigurationException {
+        return super.jobOperator();
+    }
+
+    @Bean
     public TaskExecutor asyncBatchTaskExecutor(BatchProperties batchProperties) {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(batchProperties.asyncLauncher().corePoolSize());
@@ -49,7 +56,7 @@ public class BatchConfig extends DefaultBatchConfiguration {
         executor.setQueueCapacity(batchProperties.asyncLauncher().queueCapacity());
         executor.setThreadNamePrefix("batch-async-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(30);
+        executor.setAwaitTerminationSeconds(60);
         executor.initialize();
         return executor;
     }
