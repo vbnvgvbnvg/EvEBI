@@ -11,6 +11,9 @@ spring:
     virtual-host: ${RABBITMQ_VHOST:/eve_market}
     username: ${RABBITMQ_USER:poller_producer}
     password: ${RABBITMQ_PASS:eve_password}
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
+      algorithm: ${RABBITMQ_SSL_ALGORITHM:TLSv1.3}
 
 eve:
   poller:

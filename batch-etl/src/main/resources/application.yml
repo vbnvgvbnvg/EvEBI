@@ -10,7 +10,7 @@ spring:
     timeout-per-shutdown-phase: ${SPRING_LIFECYCLE_TIMEOUT:60s}
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}?sslmode=${POSTGRES_SSL_MODE:prefer}
     username: ${POSTGRES_USER:worker_dml}
     password: ${POSTGRES_PASSWORD:eve_password}
     driver-class-name: org.postgresql.Driver
@@ -53,6 +53,9 @@ spring:
     virtual-host: ${RABBITMQ_VHOST:/eve_market}
     username: ${RABBITMQ_USER:batch_broker}
     password: ${RABBITMQ_PASS:eve_password}
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
+      algorithm: ${RABBITMQ_SSL_ALGORITHM:TLSv1.3}
 
 eve:
   batch:

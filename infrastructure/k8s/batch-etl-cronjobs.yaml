@@ -48,9 +48,45 @@ spec:
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL
-                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi
+                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi?sslmode=require
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-username
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-password
+                - name: SPRING_LIQUIBASE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-username
+                - name: SPRING_LIQUIBASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-password
                 - name: SPRING_RABBITMQ_HOST
                   value: rabbitmq.eve-system.svc.cluster.local
+                - name: SPRING_RABBITMQ_PORT
+                  value: "5671"
+                - name: SPRING_RABBITMQ_VIRTUAL_HOST
+                  value: "/eve_market"
+                - name: SPRING_RABBITMQ_SSL_ENABLED
+                  value: "true"
+                - name: SPRING_RABBITMQ_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-username
+                - name: SPRING_RABBITMQ_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-password
               resources:
                 requests:
                   cpu: "500m"
@@ -111,9 +147,45 @@ spec:
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL
-                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi
+                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi?sslmode=require
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-username
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-password
+                - name: SPRING_LIQUIBASE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-username
+                - name: SPRING_LIQUIBASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-password
                 - name: SPRING_RABBITMQ_HOST
                   value: rabbitmq.eve-system.svc.cluster.local
+                - name: SPRING_RABBITMQ_PORT
+                  value: "5671"
+                - name: SPRING_RABBITMQ_VIRTUAL_HOST
+                  value: "/eve_market"
+                - name: SPRING_RABBITMQ_SSL_ENABLED
+                  value: "true"
+                - name: SPRING_RABBITMQ_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-username
+                - name: SPRING_RABBITMQ_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-password
               resources:
                 requests:
                   cpu: "500m"
@@ -174,9 +246,45 @@ spec:
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL
-                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi
+                  value: jdbc:postgresql://postgres.eve-system.svc.cluster.local:5432/eve_bi?sslmode=require
+                - name: SPRING_DATASOURCE_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-username
+                - name: SPRING_DATASOURCE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: worker-password
+                - name: SPRING_LIQUIBASE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-username
+                - name: SPRING_LIQUIBASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-db-credentials
+                      key: liquibase-password
                 - name: SPRING_RABBITMQ_HOST
                   value: rabbitmq.eve-system.svc.cluster.local
+                - name: SPRING_RABBITMQ_PORT
+                  value: "5671"
+                - name: SPRING_RABBITMQ_VIRTUAL_HOST
+                  value: "/eve_market"
+                - name: SPRING_RABBITMQ_SSL_ENABLED
+                  value: "true"
+                - name: SPRING_RABBITMQ_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-username
+                - name: SPRING_RABBITMQ_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-rabbitmq-credentials
+                      key: batch-password
               resources:
                 requests:
                   cpu: "500m"
