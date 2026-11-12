@@ -95,10 +95,10 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Design and configure Remote Partitioning (Manager/Worker pattern via RabbitMQ) for multi-node horizontal scale-out across non-overlapping market regions and skew-aware item range slicing for heavy trade hubs.
 
 - [ ] **Phase 6: Security Hardening, Containerized Testing & CI/CD**
-  - [ ] **Kubernetes Batch Deployment & Process Lifecycle:**
-    - [ ] Inject Kubernetes Downward API metadata (`POD_NAME`, `POD_NODE_NAME`) into job execution parameters for distributed auditability.
-    - [ ] Configure Kubernetes `CronJob` specifications with `concurrencyPolicy: Forbid` and `restartPolicy: OnFailure`.
-    - [ ] Configure `terminationGracePeriodSeconds: 120` and `exec java` container entrypoints to ensure `SIGTERM` signals reach Spring Boot unhindered.
+  - [x] **Kubernetes Batch Deployment & Process Lifecycle:**
+    - [x] Inject Kubernetes Downward API metadata (`POD_NAME`, `POD_NODE_NAME`) into job execution parameters for distributed auditability.
+    - [x] Configure Kubernetes `CronJob` specifications with `concurrencyPolicy: Forbid` and `restartPolicy: OnFailure`.
+    - [x] Configure `terminationGracePeriodSeconds: 120` and `exec java` container entrypoints to ensure `SIGTERM` signals reach Spring Boot unhindered.
   - [ ] **Database & Broker Least-Privilege Hardening:**
     - [ ] Configure least-privilege PostgreSQL roles via Liquibase (`worker_dml`, `liquibase_ddl`, `powerbi_reader` read-only).
     - [ ] Configure RabbitMQ dedicated virtual host (`/eve_market`) with scoped producer write-only and consumer read-only access.
