@@ -79,6 +79,11 @@ eve:
       prefetch-count: 1
       heavy-region-slices:
         10000002: 2
+    kubernetes:
+      pod-name: test-pod
+      pod-node-name: test-node
+      execution-mode: DAEMON
+      exit-on-completion: false
 
 management:
   endpoints:

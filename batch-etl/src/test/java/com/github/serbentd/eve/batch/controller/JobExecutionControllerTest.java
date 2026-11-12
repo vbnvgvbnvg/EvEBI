@@ -1,6 +1,7 @@
 package com.github.serbentd.eve.batch.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.dto.JobLaunchResponseDto;
 import com.github.serbentd.eve.batch.job.daily.DailyMarketSummaryJobConfig;
 import com.github.serbentd.eve.batch.job.liquidity.OrderBookLiquidityJobConfig;
@@ -168,7 +169,9 @@ class JobExecutionControllerTest {
         mockMvc.perform(get(EXECUTIONS_URL + executionId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jobExecutionId").value(executionId))
-                .andExpect(jsonPath("$.jobName").value("dailyMarketSummaryJob"));
+                .andExpect(jsonPath("$.jobName").value("dailyMarketSummaryJob"))
+                .andExpect(jsonPath("$.podName").value("test-pod"))
+                .andExpect(jsonPath("$.podNodeName").value("test-node"));
     }
 
     @Test
@@ -215,7 +218,8 @@ class JobExecutionControllerTest {
 
         JobExecutionController controller = new JobExecutionController(
                 failingLauncher, jobExplorer, job, job, job,
-                esiRegionSyncService, dateDimensionService, timeDimensionService
+                esiRegionSyncService, dateDimensionService, timeDimensionService,
+                createTestJobParametersFactory()
         );
 
         assertThatThrownBy(() -> controller.triggerSdeSync(null, null))
@@ -254,7 +258,8 @@ class JobExecutionControllerTest {
 
         JobExecutionController controller = new JobExecutionController(
                 launcher, explorer, sdeJob, dailyJob, liquidityJob,
-                esiRegionSyncService, mock(DateDimensionService.class), mock(TimeDimensionService.class)
+                esiRegionSyncService, mock(DateDimensionService.class), mock(TimeDimensionService.class),
+                createTestJobParametersFactory()
         );
 
         assertThatThrownBy(() -> controller.triggerSdeSync(null, null))
@@ -291,13 +296,23 @@ class JobExecutionControllerTest {
 
         JobExecutionController controller = new JobExecutionController(
                 launcher, explorer, job, job, job,
-                mock(EsiRegionSyncService.class), mock(DateDimensionService.class), mock(TimeDimensionService.class)
+                mock(EsiRegionSyncService.class), mock(DateDimensionService.class), mock(TimeDimensionService.class),
+                createTestJobParametersFactory()
         );
 
         assertThatThrownBy(() -> controller.triggerSdeSync(null, null))
                 .isInstanceOf(ResponseStatusException.class)
                 .matches(e -> ((ResponseStatusException) e).getStatusCode().value() == 409)
                 .hasMessageContaining("testJob");
+    }
+
+    private static BatchJobParametersFactory createTestJobParametersFactory() {
+        com.github.serbentd.eve.batch.config.BatchProperties properties = mock(com.github.serbentd.eve.batch.config.BatchProperties.class);
+        com.github.serbentd.eve.batch.config.BatchProperties.KubernetesProperties k8sProps =
+                new com.github.serbentd.eve.batch.config.BatchProperties.KubernetesProperties(
+                        "test-pod", "test-node", com.github.serbentd.eve.batch.config.BatchExecutionMode.DAEMON, false);
+        when(properties.kubernetes()).thenReturn(k8sProps);
+        return new BatchJobParametersFactory(properties);
     }
 
     @Test

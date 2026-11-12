@@ -185,7 +185,8 @@ class BatchAmqpConfigTest {
                         2,
                         1,
                         java.util.Map.of(THE_FORGE_REGION_ID, 2)
-                )
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAEMON, false)
         );
     }
 }

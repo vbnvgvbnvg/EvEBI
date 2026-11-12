@@ -55,7 +55,8 @@ class BatchPropertiesValidationTest {
                 createValidSdeProperties(),
                 createValidEsiProperties(),
                 createValidScheduleProperties(),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -85,7 +86,8 @@ class BatchPropertiesValidationTest {
                 ),
                 createValidEsiProperties(),
                 createValidScheduleProperties(),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -112,7 +114,8 @@ class BatchPropertiesValidationTest {
                 createValidSdeProperties(),
                 createValidEsiProperties(),
                 createValidScheduleProperties(),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -144,7 +147,8 @@ class BatchPropertiesValidationTest {
                         null
                 ),
                 createValidScheduleProperties(),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -177,7 +181,8 @@ class BatchPropertiesValidationTest {
                         "  ",
                         "   "
                 ),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -216,7 +221,8 @@ class BatchPropertiesValidationTest {
                         -1,
                         -5,
                         java.util.Map.of()
-                )
+                ),
+                createValidKubernetesProperties()
         );
 
         Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
@@ -266,6 +272,57 @@ class BatchPropertiesValidationTest {
     }
 
     @Test
+    @DisplayName("Should detect violations when Kubernetes properties contain blank or null values")
+    void validate_whenKubernetesPropertiesInvalid_shouldDetectViolations() {
+        BatchProperties properties = new BatchProperties(
+                createValidChunkSizes(),
+                createValidAsyncLauncherProperties(),
+                createValidSdeProperties(),
+                createValidEsiProperties(),
+                createValidScheduleProperties(),
+                createValidRemotePartitioningProperties(),
+                new BatchProperties.KubernetesProperties(
+                        "",
+                        "   ",
+                        null,
+                        null
+                )
+        );
+
+        Set<ConstraintViolation<BatchProperties>> violations = validator.validate(properties);
+        Set<String> violatedPaths = violations.stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+
+        assertThat(violatedPaths).contains(
+                "kubernetes.podName",
+                "kubernetes.podNodeName",
+                "kubernetes.executionMode",
+                "kubernetes.exitOnCompletion"
+        );
+    }
+
+    @Test
+    @DisplayName("Should derive isOneShotJob correctly based on BatchExecutionMode")
+    void isOneShotJob_shouldReflectExecutionMode() {
+        BatchProperties.KubernetesProperties daemonProps = new BatchProperties.KubernetesProperties(
+                "pod-1", "node-1", BatchExecutionMode.DAEMON, true);
+        assertThat(daemonProps.isOneShotJob()).isFalse();
+
+        BatchProperties.KubernetesProperties sdeProps = new BatchProperties.KubernetesProperties(
+                "pod-1", "node-1", BatchExecutionMode.SDE_SYNC, true);
+        assertThat(sdeProps.isOneShotJob()).isTrue();
+
+        BatchProperties.KubernetesProperties dailyProps = new BatchProperties.KubernetesProperties(
+                "pod-1", "node-1", BatchExecutionMode.DAILY_MARKET_SUMMARY, true);
+        assertThat(dailyProps.isOneShotJob()).isTrue();
+
+        BatchProperties.KubernetesProperties liquidityProps = new BatchProperties.KubernetesProperties(
+                "pod-1", "node-1", BatchExecutionMode.ORDER_BOOK_LIQUIDITY, true);
+        assertThat(liquidityProps.isOneShotJob()).isTrue();
+    }
+
+    @Test
     @DisplayName("Should verify SdeItemDto and SdeStationDto record contracts")
     void shouldVerifyDtoContracts() {
         SdeItemDto item1 = new SdeItemDto(
@@ -302,7 +359,17 @@ class BatchPropertiesValidationTest {
                 createValidSdeProperties(),
                 createValidEsiProperties(),
                 createValidScheduleProperties(),
-                createValidRemotePartitioningProperties()
+                createValidRemotePartitioningProperties(),
+                createValidKubernetesProperties()
+        );
+    }
+
+    private static BatchProperties.KubernetesProperties createValidKubernetesProperties() {
+        return new BatchProperties.KubernetesProperties(
+                "pod-123",
+                "node-456",
+                BatchExecutionMode.DAEMON,
+                false
         );
     }
 

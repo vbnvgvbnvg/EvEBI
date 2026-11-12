@@ -11,6 +11,8 @@ import java.util.List;
  * @param status          current Spring Batch status (e.g. {@code COMPLETED}, {@code FAILED}, {@code STARTED})
  * @param exitCode        terminal exit code
  * @param exitDescription detailed diagnostic exit description
+ * @param podName         Kubernetes pod name that executed this job, or null if unrecorded
+ * @param podNodeName     Kubernetes node name that executed this job, or null if unrecorded
  * @param startTime       instant the execution started
  * @param endTime         instant the execution completed, or null if currently active
  * @param stepExecutions  individual step execution summaries and throughput counters
@@ -21,6 +23,8 @@ public record JobExecutionDetailDto(
         String status,
         String exitCode,
         String exitDescription,
+        String podName,
+        String podNodeName,
         Instant startTime,
         Instant endTime,
         List<StepExecutionDetailDto> stepExecutions

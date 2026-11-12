@@ -1,5 +1,6 @@
 server:
   port: ${SERVER_PORT:8083}
+  shutdown: graceful
 
 spring:
   application:
@@ -95,6 +96,11 @@ eve:
       heavy-region-slices:
         10000002: ${EVE_BATCH_PARTITION_FORGE_SLICES:4}
         10000043: ${EVE_BATCH_PARTITION_DOMAIN_SLICES:2}
+    kubernetes:
+      pod-name: ${POD_NAME:local-jvm}
+      pod-node-name: ${POD_NODE_NAME:local-node}
+      execution-mode: ${EVE_BATCH_EXECUTION_MODE:DAEMON}
+      exit-on-completion: ${EVE_BATCH_EXIT_ON_COMPLETION:true}
 
 management:
   endpoints:

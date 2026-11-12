@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.batch.scheduler;
 
+import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.job.daily.DailyMarketSummaryJobConfig;
@@ -43,6 +44,7 @@ public class BatchJobScheduler {
     private final BatchProperties batchProperties;
     private final DateDimensionService dateDimensionService;
     private final TimeDimensionService timeDimensionService;
+    private final BatchJobParametersFactory jobParametersFactory;
 
     public BatchJobScheduler(
             @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
@@ -51,7 +53,8 @@ public class BatchJobScheduler {
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
             BatchProperties batchProperties,
             DateDimensionService dateDimensionService,
-            TimeDimensionService timeDimensionService) {
+            TimeDimensionService timeDimensionService,
+            BatchJobParametersFactory jobParametersFactory) {
         this.asyncJobLauncher = asyncJobLauncher;
         this.sdeSyncJob = sdeSyncJob;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
@@ -59,6 +62,7 @@ public class BatchJobScheduler {
         this.batchProperties = batchProperties;
         this.dateDimensionService = dateDimensionService;
         this.timeDimensionService = timeDimensionService;
+        this.jobParametersFactory = jobParametersFactory;
     }
 
     /**
@@ -86,8 +90,8 @@ public class BatchJobScheduler {
 
         log.info("Executing scheduled SDE synchronization trigger");
         try {
-            asyncJobLauncher.run(sdeSyncJob, new JobParametersBuilder()
-                    .addLong("timestamp", System.currentTimeMillis())
+            asyncJobLauncher.run(sdeSyncJob, jobParametersFactory.newBuilder()
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled SDE synchronization job launch failed: {}", e.getMessage(), e);
@@ -106,9 +110,9 @@ public class BatchJobScheduler {
         LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
         log.info("Executing scheduled daily market summary trigger for date: {}", yesterday);
         try {
-            asyncJobLauncher.run(dailyMarketSummaryJob, new JobParametersBuilder()
+            asyncJobLauncher.run(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
                     .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, yesterday.toString())
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled daily market summary job launch failed: {}", e.getMessage(), e);
@@ -127,9 +131,9 @@ public class BatchJobScheduler {
         Instant snapshotTime = Instant.now().truncatedTo(ChronoUnit.MINUTES);
         log.info("Executing scheduled order book liquidity trigger for timestamp: {}", snapshotTime);
         try {
-            asyncJobLauncher.run(orderBookLiquidityJob, new JobParametersBuilder()
+            asyncJobLauncher.run(orderBookLiquidityJob, jobParametersFactory.newBuilder()
                     .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, snapshotTime.toString())
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled order book liquidity job launch failed: {}", e.getMessage(), e);
