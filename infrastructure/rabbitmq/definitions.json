@@ -1,0 +1,180 @@
+{
+  "rabbit_version": "3.13.0",
+  "vhosts": [
+    {
+      "name": "/"
+    },
+    {
+      "name": "/eve_market"
+    }
+  ],
+  "users": [
+    {
+      "name": "eve_user",
+      "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": [
+        "administrator"
+      ]
+    },
+    {
+      "name": "poller_producer",
+      "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": []
+    },
+    {
+      "name": "worker_consumer",
+      "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": []
+    },
+    {
+      "name": "batch_broker",
+      "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": []
+    }
+  ],
+  "permissions": [
+    {
+      "user": "eve_user",
+      "vhost": "/eve_market",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "poller_producer",
+      "vhost": "/eve_market",
+      "configure": "^$",
+      "write": "^eve\\.market\\.orders$",
+      "read": "^$"
+    },
+    {
+      "user": "worker_consumer",
+      "vhost": "/eve_market",
+      "configure": "^$",
+      "write": "^$",
+      "read": "^eve\\.market\\.orders\\.worker$"
+    },
+    {
+      "user": "batch_broker",
+      "vhost": "/eve_market",
+      "configure": "^eve\\.batch\\.partition\\..*",
+      "write": "^eve\\.batch\\.partition\\..*",
+      "read": "^eve\\.batch\\.partition\\..*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "eve.market.orders",
+      "vhost": "/eve_market",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "eve.market.orders.dlx",
+      "vhost": "/eve_market",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "eve.batch.partition.exchange",
+      "vhost": "/eve_market",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
+    {
+      "name": "eve.batch.partition.dlx",
+      "vhost": "/eve_market",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "eve.market.orders.worker",
+      "vhost": "/eve_market",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "eve.market.orders.dlx",
+        "x-dead-letter-routing-key": "eve.market.orders.dlq",
+        "x-max-length": 1000000,
+        "x-message-ttl": 7200000,
+        "x-overflow": "drop-head"
+      }
+    },
+    {
+      "name": "eve.market.orders.dlq",
+      "vhost": "/eve_market",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "eve.batch.partition.requests",
+      "vhost": "/eve_market",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "eve.batch.partition.dlx",
+        "x-dead-letter-routing-key": "eve.batch.partition.dlq"
+      }
+    },
+    {
+      "name": "eve.batch.partition.dlq",
+      "vhost": "/eve_market",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "eve.market.orders",
+      "vhost": "/eve_market",
+      "destination": "eve.market.orders.worker",
+      "destination_type": "queue",
+      "routing_key": "eve.market.orders.#",
+      "arguments": {}
+    },
+    {
+      "source": "eve.market.orders.dlx",
+      "vhost": "/eve_market",
+      "destination": "eve.market.orders.dlq",
+      "destination_type": "queue",
+      "routing_key": "eve.market.orders.dlq",
+      "arguments": {}
+    },
+    {
+      "source": "eve.batch.partition.exchange",
+      "vhost": "/eve_market",
+      "destination": "eve.batch.partition.requests",
+      "destination_type": "queue",
+      "routing_key": "eve.batch.partition.requests",
+      "arguments": {}
+    },
+    {
+      "source": "eve.batch.partition.dlx",
+      "vhost": "/eve_market",
+      "destination": "eve.batch.partition.dlq",
+      "destination_type": "queue",
+      "routing_key": "eve.batch.partition.dlq",
+      "arguments": {}
+    }
+  ]
+}

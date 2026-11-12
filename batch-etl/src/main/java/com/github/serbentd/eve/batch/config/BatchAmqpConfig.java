@@ -151,6 +151,17 @@ public class BatchAmqpConfig {
     }
 
     /**
+     * Configures {@link RabbitAdmin} with declaration exception tolerance, ensuring that least-privilege
+     * batch worker accounts start cleanly when topology is pre-provisioned.
+     */
+    @Bean
+    public org.springframework.amqp.rabbit.core.RabbitAdmin batchRabbitAdmin(ConnectionFactory connectionFactory) {
+        org.springframework.amqp.rabbit.core.RabbitAdmin admin = new org.springframework.amqp.rabbit.core.RabbitAdmin(connectionFactory);
+        admin.setIgnoreDeclarationExceptions(true);
+        return admin;
+    }
+
+    /**
      * Outbound AMQP flow publishing partition requests from the Manager to RabbitMQ.
      */
     @Bean

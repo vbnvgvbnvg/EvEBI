@@ -45,7 +45,16 @@ class OrderPersistenceServiceTest {
     @BeforeEach
     void setUp() {
         // Configure chunk size of 2 for testing partitioning boundaries
-        properties = new MarketProperties("eve.market.orders", "eve.market.orders.worker", "eve.market.orders.#", 2, Duration.ofHours(2), 1000000);
+        properties = new MarketProperties(
+                "eve.market.orders",
+                "eve.market.orders.worker",
+                "eve.market.orders.#",
+                "eve.market.orders.dlx",
+                "eve.market.orders.dlq",
+                "eve.market.orders.dlq",
+                2,
+                Duration.ofHours(2),
+                1000000);
         orderPersistenceService = new OrderPersistenceService(marketOrderRepository, entityManager, properties);
     }
 

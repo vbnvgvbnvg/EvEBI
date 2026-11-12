@@ -26,6 +26,9 @@ eve:
     exchange: test.exchange
     queue: test.queue
     routing-key: test.routingKey
+    dead-letter-exchange: test.dlx
+    dead-letter-queue: test.dlq
+    dead-letter-routing-key: test.dlq
     batch-size: 500
     queue-ttl: 2h
     queue-max-length: 1000000

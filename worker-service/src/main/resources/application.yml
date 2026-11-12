@@ -40,11 +40,13 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_AMQP_PORT:5672}
-    username: ${RABBITMQ_DEFAULT_USER:eve_user}
-    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+    virtual-host: ${RABBITMQ_VHOST:/eve_market}
+    username: ${RABBITMQ_USER:worker_consumer}
+    password: ${RABBITMQ_PASS:eve_password}
     listener:
       simple:
         acknowledge-mode: auto
+        default-requeue-rejected: false
         prefetch: 50
         concurrency: 1
         max-concurrency: 5
@@ -54,6 +56,9 @@ eve:
     exchange: ${EVE_MARKET_EXCHANGE:eve.market.orders}
     queue: ${EVE_MARKET_QUEUE:eve.market.orders.worker}
     routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders.#}
+    dead-letter-exchange: ${EVE_MARKET_DLX:eve.market.orders.dlx}
+    dead-letter-queue: ${EVE_MARKET_DLQ:eve.market.orders.dlq}
+    dead-letter-routing-key: ${EVE_MARKET_DLQ_ROUTING_KEY:eve.market.orders.dlq}
     batch-size: ${EVE_MARKET_BATCH_SIZE:500}
     queue-ttl: ${EVE_MARKET_QUEUE_TTL:2h}
     queue-max-length: ${EVE_MARKET_QUEUE_MAX_LENGTH:1000000}

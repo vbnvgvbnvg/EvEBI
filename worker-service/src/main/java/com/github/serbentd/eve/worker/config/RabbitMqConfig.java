@@ -8,13 +8,17 @@ import com.github.serbentd.eve.worker.event.MarketOrderEvent;
 import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.DefaultJackson2JavaTypeMapper;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,12 +27,15 @@ import java.util.List;
 
 /**
  * Spring AMQP configuration for market order message ingestion.
- * Binds the worker queue to the topic exchange using {@link MarketProperties},
- * and configures Jackson JSON serialization with Java 21 record and time support.
+ * Binds the worker queue to the topic exchange and configures dead-letter routing using {@link MarketProperties},
+ * and configures Jackson JSON serialization with trusted package restrictions and Java 21 record support.
  */
 @Configuration
 @EnableConfigurationProperties(MarketProperties.class)
 public class RabbitMqConfig {
+
+    private static final String TRUSTED_WORKER_EVENT_PACKAGE = "com.github.serbentd.eve.worker.event";
+    private static final String TRUSTED_POLLER_EVENT_PACKAGE = "com.github.serbentd.eve.poller.event";
 
     private final MarketProperties properties;
 
@@ -39,7 +46,7 @@ public class RabbitMqConfig {
     /**
      * JSON message converter supporting Java records and {@code OffsetDateTime} serialization,
      * configured with a type mapper that maps JSON arrays to {@code List<MarketOrderEvent>} to prevent
-     * type erasure to {@code LinkedHashMap}.
+     * type erasure to {@code LinkedHashMap}, and enforces trusted package deserialization.
      *
      * @param objectMapper auto-configured Spring Jackson object mapper
      * @return configured Jackson2JsonMessageConverter
@@ -73,6 +80,11 @@ public class RabbitMqConfig {
             }
         };
 
+        typeMapper.setTrustedPackages(
+                TRUSTED_WORKER_EVENT_PACKAGE,
+                TRUSTED_POLLER_EVENT_PACKAGE
+        );
+
         converter.setJavaTypeMapper(typeMapper);
         return converter;
     }
@@ -86,11 +98,14 @@ public class RabbitMqConfig {
     }
 
     /**
-     * Durable queue for worker service order persistence.
+     * Durable queue for worker service order persistence, configured with dead-letter exchange routing
+     * for unprocessable or failed messages.
      */
     @Bean
     public Queue marketOrdersQueue() {
         return QueueBuilder.durable(properties.queue())
+                .deadLetterExchange(properties.deadLetterExchange())
+                .deadLetterRoutingKey(properties.deadLetterRoutingKey())
                 .ttl((int) properties.queueTtl().toMillis())
                 .maxLength(properties.queueMaxLength())
                 .overflow(QueueBuilder.Overflow.dropHead)
@@ -101,9 +116,50 @@ public class RabbitMqConfig {
      * Binds the worker queue to the topic exchange using the configured routing key pattern.
      */
     @Bean
-    public Binding marketOrdersBinding(Queue marketOrdersQueue, TopicExchange marketOrdersExchange) {
+    public Binding marketOrdersBinding(
+            @Qualifier("marketOrdersQueue") Queue marketOrdersQueue,
+            TopicExchange marketOrdersExchange) {
         return BindingBuilder.bind(marketOrdersQueue)
                 .to(marketOrdersExchange)
                 .with(properties.routingKey());
+    }
+
+    /**
+     * Durable direct dead-letter exchange for failed or unprocessable market order messages.
+     */
+    @Bean
+    public DirectExchange marketOrdersDeadLetterExchange() {
+        return new DirectExchange(properties.deadLetterExchange(), true, false);
+    }
+
+    /**
+     * Durable dead-letter queue storing failed market order events for diagnostics and replay.
+     */
+    @Bean
+    public Queue marketOrdersDeadLetterQueue() {
+        return QueueBuilder.durable(properties.deadLetterQueue()).build();
+    }
+
+    /**
+     * Binds the dead-letter queue to the direct dead-letter exchange.
+     */
+    @Bean
+    public Binding marketOrdersDeadLetterBinding(
+            @Qualifier("marketOrdersDeadLetterQueue") Queue marketOrdersDeadLetterQueue,
+            DirectExchange marketOrdersDeadLetterExchange) {
+        return BindingBuilder.bind(marketOrdersDeadLetterQueue)
+                .to(marketOrdersDeadLetterExchange)
+                .with(properties.deadLetterRoutingKey());
+    }
+
+    /**
+     * Configures {@link RabbitAdmin} with declaration exception tolerance, ensuring that least-privilege
+     * application credentials without administrative declare permissions start cleanly when topology is pre-provisioned.
+     */
+    @Bean
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
+        admin.setIgnoreDeclarationExceptions(true);
+        return admin;
     }
 }

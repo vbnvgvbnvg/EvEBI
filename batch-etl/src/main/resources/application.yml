@@ -50,8 +50,9 @@ spring:
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_AMQP_PORT:5672}
-    username: ${RABBITMQ_DEFAULT_USER:eve_user}
-    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+    virtual-host: ${RABBITMQ_VHOST:/eve_market}
+    username: ${RABBITMQ_USER:batch_broker}
+    password: ${RABBITMQ_PASS:eve_password}
 
 eve:
   batch:
