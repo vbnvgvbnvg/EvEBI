@@ -32,12 +32,15 @@ public class SdeSyncJobConfig {
     public static final String ITEM_STEP_NAME = "sdeItemSyncStep";
     public static final String STATION_STEP_NAME = "sdeStationSyncStep";
 
+    public static final String ITEMS_URL_PARAM = "itemsUrl";
+    public static final String STATIONS_URL_PARAM = "stationsUrl";
+
     @Bean
     @StepScope
     public SdeItemReader sdeItemReader(
             SdeDownloadService downloadService,
             BatchProperties batchProperties,
-            @Value("#{jobParameters['itemsUrl']}") String itemsUrlParam) {
+            @Value("#{jobParameters['" + ITEMS_URL_PARAM + "']}") String itemsUrlParam) {
 
         String url = (itemsUrlParam != null && !itemsUrlParam.isBlank())
                 ? itemsUrlParam
@@ -50,7 +53,7 @@ public class SdeSyncJobConfig {
     public SdeStationReader sdeStationReader(
             SdeDownloadService downloadService,
             BatchProperties batchProperties,
-            @Value("#{jobParameters['stationsUrl']}") String stationsUrlParam) {
+            @Value("#{jobParameters['" + STATIONS_URL_PARAM + "']}") String stationsUrlParam) {
 
         String url = (stationsUrlParam != null && !stationsUrlParam.isBlank())
                 ? stationsUrlParam

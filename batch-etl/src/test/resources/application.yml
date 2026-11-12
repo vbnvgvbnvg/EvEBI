@@ -44,6 +44,7 @@ eve:
       core-pool-size: 2
       max-pool-size: 4
       queue-capacity: 10
+      await-termination: 60s
     sde:
       items-url: http://localhost:8089/dump/latest/invTypes.csv
       stations-url: http://localhost:8089/dump/latest/staStations.csv
@@ -79,6 +80,11 @@ eve:
       prefetch-count: 1
       heavy-region-slices:
         10000002: 2
+    kubernetes:
+      pod-name: test-pod
+      pod-node-name: test-node
+      execution-mode: DAEMON
+      exit-on-completion: false
 
 management:
   endpoints:

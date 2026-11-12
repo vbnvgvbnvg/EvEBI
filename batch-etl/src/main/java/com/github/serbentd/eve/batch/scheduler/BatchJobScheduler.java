@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.batch.scheduler;
 
+import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.job.daily.DailyMarketSummaryJobConfig;
@@ -9,7 +10,6 @@ import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -43,6 +43,7 @@ public class BatchJobScheduler {
     private final BatchProperties batchProperties;
     private final DateDimensionService dateDimensionService;
     private final TimeDimensionService timeDimensionService;
+    private final BatchJobParametersFactory jobParametersFactory;
 
     public BatchJobScheduler(
             @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
@@ -51,7 +52,8 @@ public class BatchJobScheduler {
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
             BatchProperties batchProperties,
             DateDimensionService dateDimensionService,
-            TimeDimensionService timeDimensionService) {
+            TimeDimensionService timeDimensionService,
+            BatchJobParametersFactory jobParametersFactory) {
         this.asyncJobLauncher = asyncJobLauncher;
         this.sdeSyncJob = sdeSyncJob;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
@@ -59,6 +61,7 @@ public class BatchJobScheduler {
         this.batchProperties = batchProperties;
         this.dateDimensionService = dateDimensionService;
         this.timeDimensionService = timeDimensionService;
+        this.jobParametersFactory = jobParametersFactory;
     }
 
     /**
@@ -66,7 +69,7 @@ public class BatchJobScheduler {
      */
     @EventListener(ApplicationReadyEvent.class)
     public void seedDimensionsOnStartup() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
@@ -80,14 +83,16 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.sde-sync-cron}")
     public void scheduleSdeSync() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
-        log.info("Executing scheduled SDE synchronization trigger");
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        log.info("Executing scheduled SDE synchronization trigger for date: {}", today);
         try {
-            asyncJobLauncher.run(sdeSyncJob, new JobParametersBuilder()
-                    .addLong("timestamp", System.currentTimeMillis())
+            asyncJobLauncher.run(sdeSyncJob, jobParametersFactory.newBuilder()
+                    .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, today.toString())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled SDE synchronization job launch failed: {}", e.getMessage(), e);
@@ -99,16 +104,16 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.daily-summary-cron}")
     public void scheduleDailySummary() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
         LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
         log.info("Executing scheduled daily market summary trigger for date: {}", yesterday);
         try {
-            asyncJobLauncher.run(dailyMarketSummaryJob, new JobParametersBuilder()
+            asyncJobLauncher.run(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
                     .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, yesterday.toString())
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled daily market summary job launch failed: {}", e.getMessage(), e);
@@ -120,20 +125,24 @@ public class BatchJobScheduler {
      */
     @Scheduled(cron = "${eve.batch.schedule.liquidity-cron}")
     public void scheduleLiquiditySnapshot() {
-        if (isWorkerNode()) {
+        if (isSchedulerDisabled()) {
             return;
         }
 
         Instant snapshotTime = Instant.now().truncatedTo(ChronoUnit.MINUTES);
         log.info("Executing scheduled order book liquidity trigger for timestamp: {}", snapshotTime);
         try {
-            asyncJobLauncher.run(orderBookLiquidityJob, new JobParametersBuilder()
+            asyncJobLauncher.run(orderBookLiquidityJob, jobParametersFactory.newBuilder()
                     .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, snapshotTime.toString())
-                    .addLong("timestamp", System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled order book liquidity job launch failed: {}", e.getMessage(), e);
         }
+    }
+
+    private boolean isSchedulerDisabled() {
+        return isWorkerNode() || batchProperties.kubernetes().isOneShotJob();
     }
 
     private boolean isWorkerNode() {

@@ -1,11 +1,14 @@
 package com.github.serbentd.eve.batch.scheduler;
 
+import com.github.serbentd.eve.batch.config.BatchExecutionMode;
+import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.JobExecution;
@@ -16,6 +19,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,7 +55,8 @@ class BatchJobSchedulerTest {
                 orderBookLiquidityJob,
                 properties,
                 dateDimensionService,
-                timeDimensionService
+                timeDimensionService,
+                new BatchJobParametersFactory(properties)
         );
 
         // 1. Startup dimension seeding
@@ -60,14 +65,35 @@ class BatchJobSchedulerTest {
         verify(timeDimensionService).seedTimeDimension();
 
         // 2. Scheduled triggers
+        ArgumentCaptor<JobParameters> paramsCaptor = ArgumentCaptor.forClass(JobParameters.class);
+
         scheduler.scheduleSdeSync();
-        verify(jobLauncher).run(eq(sdeSyncJob), any(JobParameters.class));
+        verify(jobLauncher).run(eq(sdeSyncJob), paramsCaptor.capture());
+        JobParameters sdeParams = paramsCaptor.getValue();
+        assertThat(sdeParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
+        assertThat(sdeParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
+        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(sdeParams.getParameters().get("targetDate").isIdentifying()).isTrue();
 
         scheduler.scheduleDailySummary();
-        verify(jobLauncher).run(eq(dailyMarketSummaryJob), any(JobParameters.class));
+        verify(jobLauncher).run(eq(dailyMarketSummaryJob), paramsCaptor.capture());
+        JobParameters dailyParams = paramsCaptor.getValue();
+        assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
+        assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
+        assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(dailyParams.getParameters().get("targetDate").isIdentifying()).isTrue();
 
         scheduler.scheduleLiquiditySnapshot();
-        verify(jobLauncher).run(eq(orderBookLiquidityJob), any(JobParameters.class));
+        verify(jobLauncher).run(eq(orderBookLiquidityJob), paramsCaptor.capture());
+        JobParameters liqParams = paramsCaptor.getValue();
+        assertThat(liqParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
+        assertThat(liqParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
+        assertThat(liqParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(liqParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(liqParams.getParameters().get("snapshotTime").isIdentifying()).isTrue();
     }
 
     @Test
@@ -89,7 +115,56 @@ class BatchJobSchedulerTest {
                 orderBookLiquidityJob,
                 properties,
                 dateDimensionService,
-                timeDimensionService
+                timeDimensionService,
+                new BatchJobParametersFactory(properties)
+        );
+
+        scheduler.seedDimensionsOnStartup();
+        verify(dateDimensionService, never()).seedDateDimension(any(), any());
+        verify(timeDimensionService, never()).seedTimeDimension();
+
+        scheduler.scheduleSdeSync();
+        verify(jobLauncher, never()).run(eq(sdeSyncJob), any());
+
+        scheduler.scheduleDailySummary();
+        verify(jobLauncher, never()).run(eq(dailyMarketSummaryJob), any());
+
+        scheduler.scheduleLiquiditySnapshot();
+        verify(jobLauncher, never()).run(eq(orderBookLiquidityJob), any());
+    }
+
+    @Test
+    @DisplayName("Should skip all scheduled triggers and startup seeding when node is running in one-shot mode")
+    void scheduler_whenOneShotMode_shouldSkipExecution() throws Exception {
+        JobLauncher jobLauncher = mock(JobLauncher.class);
+        Job sdeSyncJob = mock(Job.class);
+        Job dailyMarketSummaryJob = mock(Job.class);
+        Job orderBookLiquidityJob = mock(Job.class);
+        DateDimensionService dateDimensionService = mock(DateDimensionService.class);
+        TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
+
+        BatchProperties properties = new BatchProperties(
+                new BatchProperties.ChunkSizeProperties(500, 1000),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
+                new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
+                new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", MIN_MARKET_REGION_ID, MAX_MARKET_REGION_ID, Duration.ofSeconds(5), Duration.ofSeconds(5)),
+                new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),
+                new BatchProperties.RemotePartitioningProperties(
+                        PartitionRole.STANDALONE, true, "ex", "req", "req", "dlx", "dlq", "dlq",
+                        Duration.ofSeconds(1), Duration.ofSeconds(10), 2, 1, Map.of(THE_FORGE_REGION_ID, 2)
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAILY_MARKET_SUMMARY, false)
+        );
+
+        BatchJobScheduler scheduler = new BatchJobScheduler(
+                jobLauncher,
+                sdeSyncJob,
+                dailyMarketSummaryJob,
+                orderBookLiquidityJob,
+                properties,
+                dateDimensionService,
+                timeDimensionService,
+                new BatchJobParametersFactory(properties)
         );
 
         scheduler.seedDimensionsOnStartup();
@@ -128,7 +203,8 @@ class BatchJobSchedulerTest {
                 orderBookLiquidityJob,
                 properties,
                 dateDimensionService,
-                timeDimensionService
+                timeDimensionService,
+                new BatchJobParametersFactory(properties)
         );
 
         // Verify none of these throw exceptions when the underlying job launcher fails
@@ -144,7 +220,7 @@ class BatchJobSchedulerTest {
     private static BatchProperties createProperties(PartitionRole role) {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
                 new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", MIN_MARKET_REGION_ID, MAX_MARKET_REGION_ID, Duration.ofSeconds(5), Duration.ofSeconds(5)),
                 new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),
@@ -162,7 +238,8 @@ class BatchJobSchedulerTest {
                         2,
                         1,
                         Map.of(THE_FORGE_REGION_ID, 2)
-                )
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAEMON, false)
         );
     }
 }

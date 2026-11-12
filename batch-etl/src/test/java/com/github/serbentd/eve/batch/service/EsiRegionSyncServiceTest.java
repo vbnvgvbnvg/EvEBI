@@ -1,6 +1,7 @@
 package com.github.serbentd.eve.batch.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.serbentd.eve.batch.config.BatchExecutionMode;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.domain.DimRegionEntity;
@@ -371,7 +372,7 @@ class EsiRegionSyncServiceTest {
     private static BatchProperties createTestProperties(String regionsUrl, String namesUrl) {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Agent", Duration.ofSeconds(1), Duration.ofSeconds(1), 100),
                 new BatchProperties.EsiProperties(
                         regionsUrl,
@@ -386,7 +387,8 @@ class EsiRegionSyncServiceTest {
                 new BatchProperties.RemotePartitioningProperties(
                         PartitionRole.STANDALONE, false, "ex", "req", "req", "dlx", "dlq", "dlq",
                         Duration.ofSeconds(1), Duration.ofSeconds(1), 1, 1, Map.of(THE_FORGE_REGION_ID, 1)
-                )
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAEMON, false)
         );
     }
 }

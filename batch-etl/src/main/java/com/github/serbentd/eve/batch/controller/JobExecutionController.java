@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.batch.controller;
 
+import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.dto.DimensionSeedResponseDto;
 import com.github.serbentd.eve.batch.dto.JobExecutionDetailDto;
 import com.github.serbentd.eve.batch.dto.JobLaunchResponseDto;
@@ -57,6 +58,7 @@ public class JobExecutionController {
     private final EsiRegionSyncService esiRegionSyncService;
     private final DateDimensionService dateDimensionService;
     private final TimeDimensionService timeDimensionService;
+    private final BatchJobParametersFactory jobParametersFactory;
     private final ConcurrentMap<String, Object> jobLaunchLocks = new ConcurrentHashMap<>();
 
     public JobExecutionController(
@@ -67,7 +69,8 @@ public class JobExecutionController {
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
             EsiRegionSyncService esiRegionSyncService,
             DateDimensionService dateDimensionService,
-            TimeDimensionService timeDimensionService) {
+            TimeDimensionService timeDimensionService,
+            BatchJobParametersFactory jobParametersFactory) {
         this.asyncJobLauncher = asyncJobLauncher;
         this.jobExplorer = jobExplorer;
         this.sdeSyncJob = sdeSyncJob;
@@ -76,6 +79,7 @@ public class JobExecutionController {
         this.esiRegionSyncService = esiRegionSyncService;
         this.dateDimensionService = dateDimensionService;
         this.timeDimensionService = timeDimensionService;
+        this.jobParametersFactory = jobParametersFactory;
     }
 
     /**
@@ -86,14 +90,14 @@ public class JobExecutionController {
             @RequestParam(name = "itemsUrl", required = false) String itemsUrl,
             @RequestParam(name = "stationsUrl", required = false) String stationsUrl) {
 
-        JobParametersBuilder builder = new JobParametersBuilder()
-                .addLong("timestamp", System.currentTimeMillis());
+        JobParametersBuilder builder = jobParametersFactory.newBuilder()
+                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis());
 
         if (itemsUrl != null && !itemsUrl.isBlank()) {
-            builder.addString("itemsUrl", itemsUrl);
+            builder.addString(SdeSyncJobConfig.ITEMS_URL_PARAM, itemsUrl);
         }
         if (stationsUrl != null && !stationsUrl.isBlank()) {
-            builder.addString("stationsUrl", stationsUrl);
+            builder.addString(SdeSyncJobConfig.STATIONS_URL_PARAM, stationsUrl);
         }
 
         JobExecution execution = launchJobSafely(sdeSyncJob, builder.toJobParameters());
@@ -172,9 +176,9 @@ public class JobExecutionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid targetDate format (expected YYYY-MM-DD): " + resolvedDate);
         }
 
-        JobExecution execution = launchJobSafely(dailyMarketSummaryJob, new JobParametersBuilder()
+        JobExecution execution = launchJobSafely(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
                 .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, resolvedDate)
-                .addLong("timestamp", System.currentTimeMillis())
+                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
                 .toJobParameters());
 
         log.info("Dispatched {} for targetDate: {}, execution id: {}",
@@ -207,9 +211,9 @@ public class JobExecutionController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid snapshotTime format (expected ISO-8601 Instant): " + resolvedTime);
         }
 
-        JobExecution execution = launchJobSafely(orderBookLiquidityJob, new JobParametersBuilder()
+        JobExecution execution = launchJobSafely(orderBookLiquidityJob, jobParametersFactory.newBuilder()
                 .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, resolvedTime)
-                .addLong("timestamp", System.currentTimeMillis())
+                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
                 .toJobParameters());
 
         log.info("Dispatched {} for snapshotTime: {}, execution id: {}",
@@ -234,6 +238,9 @@ public class JobExecutionController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job execution not found for id: " + executionId);
         }
 
+        String podName = execution.getJobParameters().getString(BatchJobParametersFactory.POD_NAME_PARAM);
+        String podNodeName = execution.getJobParameters().getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM);
+
         List<JobExecutionDetailDto.StepExecutionDetailDto> stepDtos = execution.getStepExecutions().stream()
                 .map(step -> new JobExecutionDetailDto.StepExecutionDetailDto(
                         step.getStepName(),
@@ -252,6 +259,8 @@ public class JobExecutionController {
                 execution.getStatus().toString(),
                 execution.getExitStatus().getExitCode(),
                 execution.getExitStatus().getExitDescription(),
+                podName,
+                podNodeName,
                 toInstant(execution.getStartTime()),
                 toInstant(execution.getEndTime()),
                 stepDtos

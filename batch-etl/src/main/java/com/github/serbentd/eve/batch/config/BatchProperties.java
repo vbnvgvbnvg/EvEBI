@@ -23,7 +23,8 @@ public record BatchProperties(
         @Valid @NotNull SdeProperties sde,
         @Valid @NotNull EsiProperties esi,
         @Valid @NotNull ScheduleProperties schedule,
-        @Valid @NotNull RemotePartitioningProperties remotePartitioning
+        @Valid @NotNull RemotePartitioningProperties remotePartitioning,
+        @Valid @NotNull KubernetesProperties kubernetes
 ) {
 
     /**
@@ -40,7 +41,8 @@ public record BatchProperties(
     public record AsyncLauncherProperties(
             @NotNull @Positive Integer corePoolSize,
             @NotNull @Positive Integer maxPoolSize,
-            @NotNull @Positive Integer queueCapacity
+            @NotNull @Positive Integer queueCapacity,
+            @NotNull Duration awaitTermination
     ) {}
 
     /**
@@ -118,6 +120,28 @@ public record BatchProperties(
          */
         public boolean isPartitioned() {
             return role != PartitionRole.STANDALONE;
+        }
+    }
+
+    /**
+     * Kubernetes process lifecycle and Downward API metadata properties.
+     *
+     * @param podName          current pod name injected via Downward API ({@code metadata.name})
+     * @param podNodeName      current Kubernetes node name injected via Downward API ({@code spec.nodeName})
+     * @param executionMode    operational execution mode ({@link BatchExecutionMode#DAEMON} or one-shot job)
+     * @param exitOnCompletion whether to terminate the JVM upon completion when running in one-shot mode
+     */
+    public record KubernetesProperties(
+            @NotBlank String podName,
+            @NotBlank String podNodeName,
+            @NotNull BatchExecutionMode executionMode,
+            @NotNull Boolean exitOnCompletion
+    ) {
+        /**
+         * Returns {@code true} when this process is running as an ephemeral one-shot batch job.
+         */
+        public boolean isOneShotJob() {
+            return executionMode != BatchExecutionMode.DAEMON;
         }
     }
 }

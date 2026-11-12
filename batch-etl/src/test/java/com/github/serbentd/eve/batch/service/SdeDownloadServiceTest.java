@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.batch.service;
 
+import com.github.serbentd.eve.batch.config.BatchExecutionMode;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
 import com.github.serbentd.eve.batch.domain.SdeMetadataEntity;
@@ -63,7 +64,7 @@ class SdeDownloadServiceTest {
 
         BatchProperties batchProperties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties(
                         ITEMS_URL,
                         STATIONS_URL,
@@ -101,7 +102,8 @@ class SdeDownloadServiceTest {
                         2,
                         1,
                         java.util.Map.of(THE_FORGE_REGION_ID, 2)
-                )
+                ),
+                new BatchProperties.KubernetesProperties("test-pod", "test-node", BatchExecutionMode.DAEMON, false)
         );
         this.downloadService = new SdeDownloadService(
                 batchProperties,

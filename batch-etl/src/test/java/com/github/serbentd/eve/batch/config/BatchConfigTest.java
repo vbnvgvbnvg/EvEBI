@@ -61,6 +61,13 @@ class BatchConfigTest {
         assertThat(batchProperties.sde().connectTimeout()).hasSeconds(5);
         assertThat(batchProperties.sde().readTimeout()).hasSeconds(5);
         assertThat(batchProperties.sde().chunkSize()).isEqualTo(10);
+
+        assertThat(batchProperties.kubernetes()).isNotNull();
+        assertThat(batchProperties.kubernetes().podName()).isEqualTo("test-pod");
+        assertThat(batchProperties.kubernetes().podNodeName()).isEqualTo("test-node");
+        assertThat(batchProperties.kubernetes().executionMode()).isEqualTo(BatchExecutionMode.DAEMON);
+        assertThat(batchProperties.kubernetes().exitOnCompletion()).isFalse();
+        assertThat(batchProperties.kubernetes().isOneShotJob()).isFalse();
     }
 
     @Test

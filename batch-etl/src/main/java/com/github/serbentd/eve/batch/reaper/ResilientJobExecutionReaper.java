@@ -9,6 +9,7 @@ import org.springframework.batch.core.explore.JobExplorer;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -20,6 +21,7 @@ import java.util.Set;
  * (socket severed) versus merely slow, preventing false positives and eliminating arbitrary startup delays.
  */
 @Component
+@Order(1)
 @Slf4j
 @RequiredArgsConstructor
 public class ResilientJobExecutionReaper implements ApplicationRunner {
