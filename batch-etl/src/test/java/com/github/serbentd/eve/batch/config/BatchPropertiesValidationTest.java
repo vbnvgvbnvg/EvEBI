@@ -110,7 +110,7 @@ class BatchPropertiesValidationTest {
     void validate_whenAsyncLauncherPropertiesInvalid_shouldDetectViolations() {
         BatchProperties properties = new BatchProperties(
                 createValidChunkSizes(),
-                new BatchProperties.AsyncLauncherProperties(0, -1, null),
+                new BatchProperties.AsyncLauncherProperties(0, -1, null, null),
                 createValidSdeProperties(),
                 createValidEsiProperties(),
                 createValidScheduleProperties(),
@@ -126,7 +126,8 @@ class BatchPropertiesValidationTest {
         assertThat(violatedPaths).contains(
                 "asyncLauncher.corePoolSize",
                 "asyncLauncher.maxPoolSize",
-                "asyncLauncher.queueCapacity"
+                "asyncLauncher.queueCapacity",
+                "asyncLauncher.awaitTermination"
         );
     }
 
@@ -378,7 +379,7 @@ class BatchPropertiesValidationTest {
     }
 
     private static BatchProperties.AsyncLauncherProperties createValidAsyncLauncherProperties() {
-        return new BatchProperties.AsyncLauncherProperties(2, 4, 10);
+        return new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60));
     }
 
     private static BatchProperties.SdeProperties createValidSdeProperties() {

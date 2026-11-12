@@ -372,7 +372,7 @@ class EsiRegionSyncServiceTest {
     private static BatchProperties createTestProperties(String regionsUrl, String namesUrl) {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Agent", Duration.ofSeconds(1), Duration.ofSeconds(1), 100),
                 new BatchProperties.EsiProperties(
                         regionsUrl,

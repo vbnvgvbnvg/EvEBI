@@ -93,15 +93,44 @@ class BatchGracefulShutdownListenerTest {
         assertThat(updated).isNotNull();
         assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPING);
 
-        // The in-memory step execution has terminate-only set to interrupt active chunk loops
+        // The in-memory step execution has terminate-only and STOPPING status set to interrupt active chunk loops
         assertThat(stepExecution.isTerminateOnly()).isTrue();
-
-        // The database record reflects STOPPING status
-        StepExecution updatedStep = updated.getStepExecutions().iterator().next();
-        assertThat(updatedStep.getStatus()).isEqualTo(BatchStatus.STOPPING);
+        assertThat(stepExecution.getStatus()).isEqualTo(BatchStatus.STOPPING);
 
         // Cleanup lock and active execution
         advisoryLockListener.afterJob(execution);
+    }
+
+    @Test
+    @DisplayName("Should fallback to updating step execution in repository when no active in-memory execution is registered")
+    void shouldUpdateStepInRepositoryWhenNoActiveInMemoryExecutionRegistered() throws Exception {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("testShutdownFallbackRunId", System.currentTimeMillis() + 1000)
+                .toJobParameters();
+
+        JobExecution execution = jobRepository.createJobExecution(DailyMarketSummaryJobConfig.JOB_NAME, params);
+        execution.setStatus(BatchStatus.STARTED);
+        jobRepository.update(execution);
+
+        StepExecution stepExecution = execution.createStepExecution("fallbackStep");
+        stepExecution.setStatus(BatchStatus.STARTED);
+        jobRepository.add(stepExecution);
+
+        // Lock acquired directly without registering in-memory execution
+        boolean locked = advisoryLockManager.tryLock(execution.getId());
+        assertThat(locked).isTrue();
+
+        int stoppedCount = shutdownListener.stopLocallyOwnedExecutions();
+        assertThat(stoppedCount).isGreaterThanOrEqualTo(1);
+
+        JobExecution updated = jobExplorer.getJobExecution(execution.getId());
+        assertThat(updated).isNotNull();
+        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPING);
+
+        StepExecution updatedStep = updated.getStepExecutions().iterator().next();
+        assertThat(updatedStep.getStatus()).isEqualTo(BatchStatus.STOPPING);
+
+        advisoryLockManager.unlock(execution.getId());
     }
 
     @Test

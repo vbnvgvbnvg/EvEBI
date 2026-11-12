@@ -41,7 +41,8 @@ public record BatchProperties(
     public record AsyncLauncherProperties(
             @NotNull @Positive Integer corePoolSize,
             @NotNull @Positive Integer maxPoolSize,
-            @NotNull @Positive Integer queueCapacity
+            @NotNull @Positive Integer queueCapacity,
+            @NotNull Duration awaitTermination
     ) {}
 
     /**

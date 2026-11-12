@@ -7,6 +7,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class BatchEtlApplication {
 
     public static void main(String[] args) {
-        System.exit(SpringApplication.exit(SpringApplication.run(BatchEtlApplication.class, args)));
+        SpringApplication.run(BatchEtlApplication.class, args);
     }
 }

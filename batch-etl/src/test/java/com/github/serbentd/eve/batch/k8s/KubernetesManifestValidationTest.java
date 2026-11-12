@@ -82,6 +82,13 @@ class KubernetesManifestValidationTest {
 
             String mode = getEnvValue(envList, "EVE_BATCH_EXECUTION_MODE");
             assertThat(mode).isIn("SDE_SYNC", "DAILY_MARKET_SUMMARY", "ORDER_BOOK_LIQUIDITY");
+
+            if ("SDE_SYNC".equals(mode)) {
+                assertThat(getEnvValue(envList, "EVE_BATCH_PARTITION_ROLE")).isEqualTo("STANDALONE");
+            } else {
+                assertThat(getEnvValue(envList, "EVE_BATCH_PARTITION_ROLE")).isEqualTo("MANAGER");
+                assertThat(getEnvValue(envList, "EVE_BATCH_RABBIT_HEALTH_ENABLED")).isEqualTo("true");
+            }
         }
     }
 
@@ -121,6 +128,7 @@ class KubernetesManifestValidationTest {
 
         assertThat(getEnvValue(envList, "EVE_BATCH_PARTITION_ROLE")).isEqualTo("WORKER");
         assertThat(getEnvValue(envList, "EVE_BATCH_EXECUTION_MODE")).isEqualTo("DAEMON");
+        assertThat(getEnvValue(envList, "EVE_BATCH_RABBIT_HEALTH_ENABLED")).isEqualTo("true");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> livenessProbe = (Map<String, Object>) container.get("livenessProbe");

@@ -64,7 +64,7 @@ class SdeDownloadServiceTest {
 
         BatchProperties batchProperties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties(
                         ITEMS_URL,
                         STATIONS_URL,

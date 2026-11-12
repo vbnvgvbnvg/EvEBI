@@ -107,7 +107,6 @@ public class AdvisoryLockManager implements DisposableBean {
             }
             return false;
         } else {
-            localLocks.remove(lockId);
             return simulatedLocks.remove(lockId);
         }
     }

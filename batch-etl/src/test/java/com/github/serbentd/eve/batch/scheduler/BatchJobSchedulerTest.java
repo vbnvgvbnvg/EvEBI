@@ -74,6 +74,8 @@ class BatchJobSchedulerTest {
         assertThat(sdeParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
         assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
         assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(sdeParams.getParameters().get("targetDate").isIdentifying()).isTrue();
 
         scheduler.scheduleDailySummary();
         verify(jobLauncher).run(eq(dailyMarketSummaryJob), paramsCaptor.capture());
@@ -81,6 +83,8 @@ class BatchJobSchedulerTest {
         assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
         assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
         assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(dailyParams.getParameters().get("targetDate").isIdentifying()).isTrue();
 
         scheduler.scheduleLiquiditySnapshot();
         verify(jobLauncher).run(eq(orderBookLiquidityJob), paramsCaptor.capture());
@@ -88,6 +92,8 @@ class BatchJobSchedulerTest {
         assertThat(liqParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
         assertThat(liqParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
         assertThat(liqParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(liqParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(liqParams.getParameters().get("snapshotTime").isIdentifying()).isTrue();
     }
 
     @Test
@@ -139,7 +145,7 @@ class BatchJobSchedulerTest {
 
         BatchProperties properties = new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
                 new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", MIN_MARKET_REGION_ID, MAX_MARKET_REGION_ID, Duration.ofSeconds(5), Duration.ofSeconds(5)),
                 new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),
@@ -214,7 +220,7 @@ class BatchJobSchedulerTest {
     private static BatchProperties createProperties(PartitionRole role) {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
                 new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", MIN_MARKET_REGION_ID, MAX_MARKET_REGION_ID, Duration.ofSeconds(5), Duration.ofSeconds(5)),
                 new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),

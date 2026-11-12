@@ -43,6 +43,8 @@ spec:
                       fieldPath: spec.nodeName
                 - name: EVE_BATCH_EXECUTION_MODE
                   value: SDE_SYNC
+                - name: EVE_BATCH_PARTITION_ROLE
+                  value: STANDALONE
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL
@@ -102,6 +104,10 @@ spec:
                       fieldPath: spec.nodeName
                 - name: EVE_BATCH_EXECUTION_MODE
                   value: DAILY_MARKET_SUMMARY
+                - name: EVE_BATCH_PARTITION_ROLE
+                  value: MANAGER
+                - name: EVE_BATCH_RABBIT_HEALTH_ENABLED
+                  value: "true"
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL
@@ -161,6 +167,10 @@ spec:
                       fieldPath: spec.nodeName
                 - name: EVE_BATCH_EXECUTION_MODE
                   value: ORDER_BOOK_LIQUIDITY
+                - name: EVE_BATCH_PARTITION_ROLE
+                  value: MANAGER
+                - name: EVE_BATCH_RABBIT_HEALTH_ENABLED
+                  value: "true"
                 - name: SPRING_PROFILES_ACTIVE
                   value: prod
                 - name: SPRING_DATASOURCE_URL

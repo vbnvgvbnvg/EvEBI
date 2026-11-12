@@ -56,7 +56,8 @@ public class BatchConfig extends DefaultBatchConfiguration {
         executor.setQueueCapacity(batchProperties.asyncLauncher().queueCapacity());
         executor.setThreadNamePrefix("batch-async-");
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(60);
+        executor.setAwaitTerminationSeconds(
+                Math.toIntExact(batchProperties.asyncLauncher().awaitTermination().toSeconds()));
         executor.initialize();
         return executor;
     }

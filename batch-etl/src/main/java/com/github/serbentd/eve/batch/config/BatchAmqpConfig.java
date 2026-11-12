@@ -182,6 +182,7 @@ public class BatchAmqpConfig {
                                 .prefetchCount(batchProperties.remotePartitioning().prefetchCount())
                                 .concurrentConsumers(batchProperties.remotePartitioning().workerConcurrency())
                                 .maxConcurrentConsumers(batchProperties.remotePartitioning().workerConcurrency())
+                                .shutdownTimeout(batchProperties.asyncLauncher().awaitTermination().toMillis())
                                 .defaultRequeueRejected(false))
                         .messageConverter(batchJsonMessageConverter))
                 .route(StepExecutionRequest.class, StepExecutionRequest::getStepName, mapping -> mapping

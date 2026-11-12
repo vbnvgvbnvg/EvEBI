@@ -44,6 +44,7 @@ eve:
       core-pool-size: 2
       max-pool-size: 4
       queue-capacity: 10
+      await-termination: 60s
     sde:
       items-url: http://localhost:8089/dump/latest/invTypes.csv
       stations-url: http://localhost:8089/dump/latest/staStations.csv

@@ -147,7 +147,7 @@ class BatchAmqpConfigTest {
     private static BatchProperties createTestProperties() {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(10, 10),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties(
                         "http://localhost/items.csv",
                         "http://localhost/stations.csv",

@@ -7,6 +7,7 @@ WORKDIR /build
 COPY pom.xml .
 COPY .mvn/ .mvn/
 COPY mvnw mvnw
+RUN chmod +x mvnw
 
 # Copy module POMs for layer caching
 COPY esi-client/pom.xml esi-client/

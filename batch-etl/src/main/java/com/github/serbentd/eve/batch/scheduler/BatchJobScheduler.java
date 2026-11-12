@@ -10,7 +10,6 @@ import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobLauncher;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -88,10 +87,12 @@ public class BatchJobScheduler {
             return;
         }
 
-        log.info("Executing scheduled SDE synchronization trigger");
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        log.info("Executing scheduled SDE synchronization trigger for date: {}", today);
         try {
             asyncJobLauncher.run(sdeSyncJob, jobParametersFactory.newBuilder()
-                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
+                    .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, today.toString())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled SDE synchronization job launch failed: {}", e.getMessage(), e);
@@ -112,7 +113,7 @@ public class BatchJobScheduler {
         try {
             asyncJobLauncher.run(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
                     .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, yesterday.toString())
-                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled daily market summary job launch failed: {}", e.getMessage(), e);
@@ -133,7 +134,7 @@ public class BatchJobScheduler {
         try {
             asyncJobLauncher.run(orderBookLiquidityJob, jobParametersFactory.newBuilder()
                     .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, snapshotTime.toString())
-                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
+                    .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
         } catch (Exception e) {
             log.error("Scheduled order book liquidity job launch failed: {}", e.getMessage(), e);

@@ -98,6 +98,8 @@ class KubernetesCronJobRunnerTest {
         assertThat(params.getString("itemsUrl")).isEqualTo("http://custom/items.csv");
         assertThat(params.getString("stationsUrl")).isEqualTo("http://custom/stations.csv");
         assertThat(params.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("k8s-pod-1");
+        assertThat(params.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
+        assertThat(params.getParameters().get(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM).isIdentifying()).isTrue();
     }
 
     @Test
@@ -252,7 +254,7 @@ class KubernetesCronJobRunnerTest {
     private static BatchProperties createProperties(BatchExecutionMode mode, boolean exitOnCompletion) {
         return new BatchProperties(
                 new BatchProperties.ChunkSizeProperties(500, 1000),
-                new BatchProperties.AsyncLauncherProperties(2, 4, 10),
+                new BatchProperties.AsyncLauncherProperties(2, 4, 10, Duration.ofSeconds(60)),
                 new BatchProperties.SdeProperties("http://localhost", "http://localhost", "Test", Duration.ofSeconds(5), Duration.ofSeconds(5), 100),
                 new BatchProperties.EsiProperties("http://localhost", "http://localhost", "Test", 10000000L, 11000000L, Duration.ofSeconds(5), Duration.ofSeconds(5)),
                 new BatchProperties.ScheduleProperties(true, "0 0 3 * * SUN", "0 15 0 * * *", "0 0/15 * * * *"),

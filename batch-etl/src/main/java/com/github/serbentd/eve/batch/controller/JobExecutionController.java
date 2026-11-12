@@ -94,10 +94,10 @@ public class JobExecutionController {
                 .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis());
 
         if (itemsUrl != null && !itemsUrl.isBlank()) {
-            builder.addString("itemsUrl", itemsUrl);
+            builder.addString(SdeSyncJobConfig.ITEMS_URL_PARAM, itemsUrl);
         }
         if (stationsUrl != null && !stationsUrl.isBlank()) {
-            builder.addString("stationsUrl", stationsUrl);
+            builder.addString(SdeSyncJobConfig.STATIONS_URL_PARAM, stationsUrl);
         }
 
         JobExecution execution = launchJobSafely(sdeSyncJob, builder.toJobParameters());

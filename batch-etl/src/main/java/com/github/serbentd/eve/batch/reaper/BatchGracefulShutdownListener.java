@@ -88,8 +88,9 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
                 long executionId = execution.getId();
                 if (advisoryLockManager.isLockHeldLocally(executionId)) {
                     log.warn("Signaling graceful stop for locally owned execution id: {} (job: '{}')", executionId, jobName);
+                    boolean stoppedByOperator = false;
                     try {
-                        jobOperator.stop(executionId);
+                        stoppedByOperator = jobOperator.stop(executionId);
                     } catch (Exception e) {
                         log.warn("Failed to stop execution id: {} via JobOperator: {}", executionId, e.getMessage());
                     }
@@ -98,44 +99,48 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
                     if (liveExecution != null && liveExecution.getStepExecutions() != null) {
                         for (StepExecution liveStep : liveExecution.getStepExecutions()) {
                             if (liveStep.getStatus().isRunning()) {
+                                log.info("Setting terminate-only on active in-memory step: '{}' (stepExecutionId: {})",
+                                        liveStep.getStepName(), liveStep.getId());
                                 liveStep.setTerminateOnly();
                                 liveStep.setStatus(BatchStatus.STOPPING);
                             }
                         }
-                    }
-
-                    JobExecution targetExecution = execution;
-                    Collection<StepExecution> stepExecutions = targetExecution.getStepExecutions();
-                    if (stepExecutions == null || stepExecutions.isEmpty()) {
-                        JobExecution refreshed = jobExplorer.getJobExecution(executionId);
-                        if (refreshed != null && refreshed.getStepExecutions() != null) {
-                            targetExecution = refreshed;
-                            stepExecutions = refreshed.getStepExecutions();
+                    } else {
+                        JobExecution targetExecution = execution;
+                        Collection<StepExecution> stepExecutions = targetExecution.getStepExecutions();
+                        if (stepExecutions == null || stepExecutions.isEmpty()) {
+                            JobExecution refreshed = jobExplorer.getJobExecution(executionId);
+                            if (refreshed != null && refreshed.getStepExecutions() != null) {
+                                targetExecution = refreshed;
+                                stepExecutions = refreshed.getStepExecutions();
+                            }
                         }
-                    }
 
-                    if (stepExecutions != null) {
-                        for (StepExecution stepExecution : stepExecutions) {
-                            if (stepExecution.getStatus().isRunning()) {
-                                log.info("Setting terminate-only on step: '{}' (stepExecutionId: {})",
-                                        stepExecution.getStepName(), stepExecution.getId());
-                                stepExecution.setTerminateOnly();
-                                stepExecution.setStatus(BatchStatus.STOPPING);
-                                try {
-                                    jobRepository.update(stepExecution);
-                                } catch (Exception e) {
-                                    log.warn("Failed to update step execution id: {} in repository: {}",
-                                            stepExecution.getId(), e.getMessage());
+                        if (stepExecutions != null) {
+                            for (StepExecution stepExecution : stepExecutions) {
+                                if (stepExecution.getStatus().isRunning()) {
+                                    log.info("Setting terminate-only on step: '{}' (stepExecutionId: {})",
+                                            stepExecution.getStepName(), stepExecution.getId());
+                                    stepExecution.setTerminateOnly();
+                                    stepExecution.setStatus(BatchStatus.STOPPING);
+                                    try {
+                                        jobRepository.update(stepExecution);
+                                    } catch (Exception e) {
+                                        log.warn("Failed to update step execution id: {} in repository: {}",
+                                                stepExecution.getId(), e.getMessage());
+                                    }
                                 }
                             }
                         }
                     }
 
-                    targetExecution.setStatus(BatchStatus.STOPPING);
-                    try {
-                        jobRepository.update(targetExecution);
-                    } catch (Exception e) {
-                        log.warn("Failed to update job execution id: {} in repository: {}", executionId, e.getMessage());
+                    if (!stoppedByOperator) {
+                        execution.setStatus(BatchStatus.STOPPING);
+                        try {
+                            jobRepository.update(execution);
+                        } catch (Exception e) {
+                            log.warn("Failed to update job execution id: {} in repository: {}", executionId, e.getMessage());
+                        }
                     }
 
                     stoppedCount++;

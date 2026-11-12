@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 
 /**
  * Startup runner coordinating synchronous one-shot batch job executions for ephemeral
@@ -123,7 +124,7 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
         } finally {
             if (Boolean.TRUE.equals(batchProperties.kubernetes().exitOnCompletion())) {
                 log.info("Initiating application termination with exit code: {}", exitCode);
-                SpringApplication.exit(applicationContext, () -> exitCode);
+                System.exit(SpringApplication.exit(applicationContext, () -> exitCode));
             }
         }
     }
@@ -136,28 +137,36 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
 
     JobParameters buildJobParameters(BatchExecutionMode mode, ApplicationArguments args) {
         JobParametersBuilder builder = jobParametersFactory.newBuilder()
-                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis());
+                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false);
 
         switch (mode) {
             case SDE_SYNC -> {
-                if (args.containsOption("itemsUrl") && !args.getOptionValues("itemsUrl").isEmpty()) {
-                    builder.addString("itemsUrl", args.getOptionValues("itemsUrl").get(0));
+                String cliTargetDate = getNonBlankOption(args, DailyMarketSummaryJobConfig.TARGET_DATE_PARAM);
+                String targetDate = cliTargetDate != null
+                        ? cliTargetDate
+                        : LocalDate.now(ZoneOffset.UTC).toString();
+                builder.addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, targetDate);
+
+                String itemsUrl = getNonBlankOption(args, SdeSyncJobConfig.ITEMS_URL_PARAM);
+                if (itemsUrl != null) {
+                    builder.addString(SdeSyncJobConfig.ITEMS_URL_PARAM, itemsUrl);
                 }
-                if (args.containsOption("stationsUrl") && !args.getOptionValues("stationsUrl").isEmpty()) {
-                    builder.addString("stationsUrl", args.getOptionValues("stationsUrl").get(0));
+                String stationsUrl = getNonBlankOption(args, SdeSyncJobConfig.STATIONS_URL_PARAM);
+                if (stationsUrl != null) {
+                    builder.addString(SdeSyncJobConfig.STATIONS_URL_PARAM, stationsUrl);
                 }
             }
             case DAILY_MARKET_SUMMARY -> {
-                String targetDate = (args.containsOption(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM)
-                        && !args.getOptionValues(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM).isEmpty())
-                        ? args.getOptionValues(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM).get(0)
+                String cliTargetDate = getNonBlankOption(args, DailyMarketSummaryJobConfig.TARGET_DATE_PARAM);
+                String targetDate = cliTargetDate != null
+                        ? cliTargetDate
                         : LocalDate.now(ZoneOffset.UTC).minusDays(1).toString();
                 builder.addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, targetDate);
             }
             case ORDER_BOOK_LIQUIDITY -> {
-                String snapshotTime = (args.containsOption(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM)
-                        && !args.getOptionValues(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM).isEmpty())
-                        ? args.getOptionValues(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM).get(0)
+                String cliSnapshotTime = getNonBlankOption(args, OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM);
+                String snapshotTime = cliSnapshotTime != null
+                        ? cliSnapshotTime
                         : Instant.now().truncatedTo(ChronoUnit.MINUTES).toString();
                 builder.addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, snapshotTime);
             }
@@ -165,6 +174,18 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
         }
 
         return builder.toJobParameters();
+    }
+
+    private static String getNonBlankOption(ApplicationArguments args, String optionName) {
+        if (args == null || !args.containsOption(optionName)) {
+            return null;
+        }
+        List<String> values = args.getOptionValues(optionName);
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        String first = values.getFirst();
+        return (first != null && !first.isBlank()) ? first : null;
     }
 
     private Job resolveJob(BatchExecutionMode mode) {
