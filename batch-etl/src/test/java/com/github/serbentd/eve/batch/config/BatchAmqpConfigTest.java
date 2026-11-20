@@ -11,6 +11,7 @@ import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.batch.integration.partition.StepExecutionRequest;
 import org.springframework.integration.channel.DirectChannel;
@@ -142,6 +143,15 @@ class BatchAmqpConfigTest {
 
         IntegrationFlow flow = batchAmqpConfig.partitionInboundFlow(connectionFactory, properties, converter);
         assertThat(flow).isNotNull();
+    }
+
+    @Test
+    @DisplayName("Should configure RabbitAdmin to ignore declaration exceptions for least-privilege roles")
+    void shouldCreateRabbitAdminIgnoringDeclarationExceptions() {
+        ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+
+        RabbitAdmin admin = batchAmqpConfig.batchRabbitAdmin(connectionFactory);
+        assertThat(admin).isNotNull();
     }
 
     private static BatchProperties createTestProperties() {

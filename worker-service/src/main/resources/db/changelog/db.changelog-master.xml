@@ -12,4 +12,7 @@
     <include file="db/changelog/domain/market_orders/init.xml"/>
     <include file="db/changelog/domain/market_orders/updates.xml"/>
 
+    <!-- Security & Least Privilege Layer -->
+    <include file="db/changelog/security/01-configure-least-privilege-roles.xml"/>
+
 </databaseChangeLog>

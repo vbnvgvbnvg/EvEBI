@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -16,7 +17,8 @@ import org.springframework.context.annotation.Configuration;
  * <p>
  * Declares the durable market orders {@link TopicExchange} and configures
  * {@link RabbitTemplate} with JSON serialization supporting Java 21 records
- * and ISO-8601 {@code OffsetDateTime} formatting.
+ * and ISO-8601 {@code OffsetDateTime} formatting. Configures {@link RabbitAdmin}
+ * with declaration exception tolerance for least-privilege producer roles.
  */
 @Configuration
 public class RabbitMqConfig {
@@ -57,5 +59,16 @@ public class RabbitMqConfig {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(jsonMessageConverter);
         return rabbitTemplate;
+    }
+
+    /**
+     * Configures {@link RabbitAdmin} with declaration exception tolerance, ensuring that least-privilege
+     * producer accounts start cleanly without administrative declare permissions when topology is pre-provisioned.
+     */
+    @Bean
+    public RabbitAdmin rabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
+        admin.setIgnoreDeclarationExceptions(true);
+        return admin;
     }
 }

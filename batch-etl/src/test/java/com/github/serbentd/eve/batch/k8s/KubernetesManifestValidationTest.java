@@ -21,7 +21,7 @@ class KubernetesManifestValidationTest {
     private static final String DOCKERFILE = "batch-etl/Dockerfile";
 
     @Test
-    @DisplayName("Should validate CronJob specifications enforce Forbid concurrency, OnFailure restart, 120s grace period, and Downward API")
+    @DisplayName("Should validate CronJob specifications enforce Forbid concurrency, OnFailure restart, 120s grace period, Downward API, and TLS/Least-Privilege credentials")
     void shouldValidateCronJobManifestInvariants() throws Exception {
         Path path = resolvePath(CRONJOBS_YAML);
         Yaml yaml = new Yaml();
@@ -89,11 +89,30 @@ class KubernetesManifestValidationTest {
                 assertThat(getEnvValue(envList, "EVE_BATCH_PARTITION_ROLE")).isEqualTo("MANAGER");
                 assertThat(getEnvValue(envList, "EVE_BATCH_RABBIT_HEALTH_ENABLED")).isEqualTo("true");
             }
+
+            // TLS & Transport Security Invariants
+            String datasourceUrl = getEnvValue(envList, "SPRING_DATASOURCE_URL");
+            assertThat(datasourceUrl)
+                    .withFailMessage("CronJob %s must enforce sslmode=require in SPRING_DATASOURCE_URL", cronJobName)
+                    .contains("sslmode=require");
+
+            assertThat(getEnvValue(envList, "SPRING_RABBITMQ_PORT")).isEqualTo("5671");
+            assertThat(getEnvValue(envList, "SPRING_RABBITMQ_VIRTUAL_HOST")).isEqualTo("/eve_market");
+            assertThat(getEnvValue(envList, "SPRING_RABBITMQ_SSL_ENABLED")).isEqualTo("true");
+
+            // Secret-Driven Least-Privilege Credentials & Isolated Liquibase Schema
+            assertThat(getEnvValue(envList, "SPRING_LIQUIBASE_LIQUIBASE_SCHEMA")).isEqualTo("liquibase");
+            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "batch-username");
+            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "batch-password");
+            assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_USER", "eve-db-credentials", "liquibase-username");
+            assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
+            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-manager-username");
+            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-manager-password");
         }
     }
 
     @Test
-    @DisplayName("Should validate Worker Deployment enforces 120s grace period, Downward API, and probes")
+    @DisplayName("Should validate Worker Deployment enforces 120s grace period, Downward API, probes, and TLS/Least-Privilege credentials")
     void shouldValidateWorkerDeploymentInvariants() throws Exception {
         Path path = resolvePath(WORKERS_YAML);
         Yaml yaml = new Yaml();
@@ -129,6 +148,25 @@ class KubernetesManifestValidationTest {
         assertThat(getEnvValue(envList, "EVE_BATCH_PARTITION_ROLE")).isEqualTo("WORKER");
         assertThat(getEnvValue(envList, "EVE_BATCH_EXECUTION_MODE")).isEqualTo("DAEMON");
         assertThat(getEnvValue(envList, "EVE_BATCH_RABBIT_HEALTH_ENABLED")).isEqualTo("true");
+
+        // TLS & Transport Security Invariants
+        String datasourceUrl = getEnvValue(envList, "SPRING_DATASOURCE_URL");
+        assertThat(datasourceUrl)
+                .withFailMessage("Worker deployment must enforce sslmode=require in SPRING_DATASOURCE_URL")
+                .contains("sslmode=require");
+
+        assertThat(getEnvValue(envList, "SPRING_RABBITMQ_PORT")).isEqualTo("5671");
+        assertThat(getEnvValue(envList, "SPRING_RABBITMQ_VIRTUAL_HOST")).isEqualTo("/eve_market");
+        assertThat(getEnvValue(envList, "SPRING_RABBITMQ_SSL_ENABLED")).isEqualTo("true");
+
+        // Secret-Driven Least-Privilege Credentials & Isolated Liquibase Schema
+        assertThat(getEnvValue(envList, "SPRING_LIQUIBASE_LIQUIBASE_SCHEMA")).isEqualTo("liquibase");
+        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "batch-username");
+        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "batch-password");
+        assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_USER", "eve-db-credentials", "liquibase-username");
+        assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
+        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-worker-username");
+        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-worker-password");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> livenessProbe = (Map<String, Object>) container.get("livenessProbe");
@@ -177,6 +215,27 @@ class KubernetesManifestValidationTest {
         }
         assertThat(found)
                 .withFailMessage("Environment variable %s with fieldPath %s must be present", envName, expectedFieldPath)
+                .isTrue();
+    }
+
+    private void assertSecretKeyRefPresent(List<Map<String, Object>> envList, String envName, String expectedSecretName, String expectedKey) {
+        boolean found = false;
+        for (Map<String, Object> env : envList) {
+            if (envName.equals(env.get("name"))) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> valueFrom = (Map<String, Object>) env.get("valueFrom");
+                assertThat(valueFrom).isNotNull();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> secretRef = (Map<String, Object>) valueFrom.get("secretKeyRef");
+                assertThat(secretRef).isNotNull();
+                assertThat(secretRef.get("name")).isEqualTo(expectedSecretName);
+                assertThat(secretRef.get("key")).isEqualTo(expectedKey);
+                found = true;
+                break;
+            }
+        }
+        assertThat(found)
+                .withFailMessage("Environment variable %s with secretRef %s:%s must be present", envName, expectedSecretName, expectedKey)
                 .isTrue();
     }
 

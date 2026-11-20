@@ -6,9 +6,9 @@ spring:
     name: worker-service
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}
-    username: ${POSTGRES_USER:eve_user}
-    password: ${POSTGRES_PASSWORD:eve_password}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}?sslmode=${POSTGRES_SSL_MODE:prefer}
+    username: ${POSTGRES_WORKER_USER:worker_dml}
+    password: ${POSTGRES_WORKER_PASSWORD:eve_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: WorkerHikariPool
@@ -34,15 +34,23 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml
+    liquibase-schema: ${POSTGRES_LIQUIBASE_SCHEMA:liquibase}
+    user: ${POSTGRES_LIQUIBASE_USER:liquibase_ddl}
+    password: ${POSTGRES_LIQUIBASE_PASSWORD:eve_password}
 
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_AMQP_PORT:5672}
-    username: ${RABBITMQ_DEFAULT_USER:eve_user}
-    password: ${RABBITMQ_DEFAULT_PASS:eve_password}
+    virtual-host: ${RABBITMQ_VHOST:/eve_market}
+    username: ${RABBITMQ_USER:worker_consumer}
+    password: ${RABBITMQ_PASS:eve_password}
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
+      algorithm: ${RABBITMQ_SSL_ALGORITHM:TLSv1.3}
     listener:
       simple:
         acknowledge-mode: auto
+        default-requeue-rejected: false
         prefetch: 50
         concurrency: 1
         max-concurrency: 5
@@ -52,6 +60,9 @@ eve:
     exchange: ${EVE_MARKET_EXCHANGE:eve.market.orders}
     queue: ${EVE_MARKET_QUEUE:eve.market.orders.worker}
     routing-key: ${EVE_MARKET_ROUTING_KEY:eve.market.orders.#}
+    dead-letter-exchange: ${EVE_MARKET_DLX:eve.market.orders.dlx}
+    dead-letter-queue: ${EVE_MARKET_DLQ:eve.market.orders.dlq}
+    dead-letter-routing-key: ${EVE_MARKET_DLQ_ROUTING_KEY:eve.market.orders.dlq}
     batch-size: ${EVE_MARKET_BATCH_SIZE:500}
     queue-ttl: ${EVE_MARKET_QUEUE_TTL:2h}
     queue-max-length: ${EVE_MARKET_QUEUE_MAX_LENGTH:1000000}

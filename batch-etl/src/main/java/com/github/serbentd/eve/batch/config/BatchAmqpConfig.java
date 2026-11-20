@@ -13,6 +13,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.batch.integration.partition.StepExecutionRequest;
@@ -148,6 +149,17 @@ public class BatchAmqpConfig {
     @Bean(name = LIQUIDITY_INBOUND_CHANNEL)
     public DirectChannel liquidityPartitionRequestsInboundChannel() {
         return new DirectChannel();
+    }
+
+    /**
+     * Configures {@link RabbitAdmin} with declaration exception tolerance, ensuring that least-privilege
+     * batch worker accounts start cleanly when topology is pre-provisioned.
+     */
+    @Bean
+    public RabbitAdmin batchRabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
+        admin.setIgnoreDeclarationExceptions(true);
+        return admin;
     }
 
     /**

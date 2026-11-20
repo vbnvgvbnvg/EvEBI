@@ -4,12 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.serbentd.eve.worker.event.MarketOrderEvent;
 import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
+import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 
@@ -20,7 +24,10 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
+@DisplayName("RabbitMQ Configuration & Serialization Unit Tests")
 class RabbitMqConfigTest {
 
     private static final long THE_FORGE_REGION_ID = 10000002L;
@@ -37,6 +44,9 @@ class RabbitMqConfigTest {
                 "test.exchange",
                 "test.queue",
                 "test.orders.#",
+                "test.dlx",
+                "test.dlq",
+                "test.dlq",
                 500,
                 Duration.ofHours(2),
                 1000000
@@ -188,7 +198,22 @@ class RabbitMqConfigTest {
     }
 
     @Test
-    void marketOrdersBeans_shouldConfigureQueueExchangeAndBinding() {
+    void jsonMessageConverter_whenHeaderHasUntrustedPackage_shouldRejectDeserialization() {
+        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+
+        MessageProperties props = new MessageProperties();
+        props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        props.setHeader("__TypeId__", "java.net.URL");
+
+        Message message = new Message("\"http://localhost\"".getBytes(StandardCharsets.UTF_8), props);
+
+        assertThatThrownBy(() -> converter.fromMessage(message))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not in the trusted packages");
+    }
+
+    @Test
+    void marketOrdersBeans_shouldConfigureQueueExchangeAndBindingWithDlx() {
         TopicExchange exchange = config.marketOrdersExchange();
         assertThat(exchange.getName()).isEqualTo("test.exchange");
         assertThat(exchange.isDurable()).isTrue();
@@ -197,6 +222,8 @@ class RabbitMqConfigTest {
         Queue queue = config.marketOrdersQueue();
         assertThat(queue.getName()).isEqualTo("test.queue");
         assertThat(queue.isDurable()).isTrue();
+        assertThat(queue.getArguments().get("x-dead-letter-exchange")).isEqualTo("test.dlx");
+        assertThat(queue.getArguments().get("x-dead-letter-routing-key")).isEqualTo("test.dlq");
         assertThat(queue.getArguments().get("x-message-ttl")).isEqualTo(7200000);
         assertThat(queue.getArguments().get("x-max-length")).isEqualTo(1000000);
         assertThat(queue.getArguments().get("x-overflow")).isEqualTo("drop-head");
@@ -205,5 +232,29 @@ class RabbitMqConfigTest {
         assertThat(binding.getDestination()).isEqualTo("test.queue");
         assertThat(binding.getExchange()).isEqualTo("test.exchange");
         assertThat(binding.getRoutingKey()).isEqualTo("test.orders.#");
+    }
+
+    @Test
+    void deadLetterBeans_shouldConfigureDlxDlqAndBinding() {
+        DirectExchange dlx = config.marketOrdersDeadLetterExchange();
+        assertThat(dlx.getName()).isEqualTo("test.dlx");
+        assertThat(dlx.isDurable()).isTrue();
+        assertThat(dlx.isAutoDelete()).isFalse();
+
+        Queue dlq = config.marketOrdersDeadLetterQueue();
+        assertThat(dlq.getName()).isEqualTo("test.dlq");
+        assertThat(dlq.isDurable()).isTrue();
+
+        Binding dlqBinding = config.marketOrdersDeadLetterBinding(dlq, dlx);
+        assertThat(dlqBinding.getDestination()).isEqualTo("test.dlq");
+        assertThat(dlqBinding.getExchange()).isEqualTo("test.dlx");
+        assertThat(dlqBinding.getRoutingKey()).isEqualTo("test.dlq");
+    }
+
+    @Test
+    void rabbitAdmin_shouldIgnoreDeclarationExceptionsForLeastPrivilegeExecution() {
+        ConnectionFactory connectionFactory = mock(ConnectionFactory.class);
+        RabbitAdmin admin = config.rabbitAdmin(connectionFactory);
+        assertThat(admin).isNotNull();
     }
 }

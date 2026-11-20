@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- 1. Idempotently create least-privilege roles and isolated liquibase schema on PostgreSQL -->
+    <changeSet id="security-001-create-roles" author="serbentd" dbms="postgresql">
+        <comment>Create least-privilege roles (liquibase_ddl, worker_dml, batch_dml, powerbi_reader) and isolated liquibase schema</comment>
+        <sql splitStatements="false">
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'liquibase_ddl') THEN
+                    CREATE ROLE liquibase_ddl;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'worker_dml') THEN
+                    CREATE ROLE worker_dml;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'batch_dml') THEN
+                    CREATE ROLE batch_dml;
+                END IF;
+                IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'powerbi_reader') THEN
+                    CREATE ROLE powerbi_reader;
+                END IF;
+            END
+            $$;
+
+            CREATE SCHEMA IF NOT EXISTS liquibase;
+        </sql>
+    </changeSet>
+
+    <!-- 2. Configure Principle of Least Privilege (PoLP) grants across public, liquibase, staging, analytics, and batch schemas -->
+    <changeSet id="security-002-grant-least-privilege-roles" author="serbentd" dbms="postgresql">
+        <comment>Lock down public/liquibase schemas and configure least-privilege grants for worker_dml, batch_dml, liquibase_ddl, and powerbi_reader</comment>
+        <sql splitStatements="false">
+            -- Lock down public schema (when executed by schema owner/superuser; init-roles.sh enforces this at bootstrap)
+            DO $$
+            BEGIN
+                REVOKE ALL ON SCHEMA public FROM PUBLIC;
+            EXCEPTION WHEN insufficient_privilege THEN
+                NULL;
+            END
+            $$;
+            REVOKE CREATE ON SCHEMA staging, analytics, batch FROM PUBLIC;
+            REVOKE ALL ON SCHEMA liquibase FROM PUBLIC, worker_dml, batch_dml, powerbi_reader;
+
+            -- liquibase_ddl: migration administrator with DDL across liquibase and all pipeline schemas
+            GRANT USAGE, CREATE ON SCHEMA liquibase, staging, analytics, batch TO liquibase_ddl;
+            GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA liquibase, staging, analytics, batch TO liquibase_ddl;
+            GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA liquibase, staging, analytics, batch TO liquibase_ddl;
+
+            -- worker_dml: operational data manipulation strictly on staging; explicitly denied analytics and batch access
+            REVOKE ALL ON SCHEMA analytics, batch FROM worker_dml;
+            REVOKE ALL ON ALL TABLES IN SCHEMA analytics, batch FROM worker_dml;
+            REVOKE ALL ON ALL SEQUENCES IN SCHEMA analytics, batch FROM worker_dml;
+            GRANT USAGE ON SCHEMA staging TO worker_dml;
+            GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA staging TO worker_dml;
+            REVOKE DELETE, TRUNCATE ON ALL TABLES IN SCHEMA staging FROM worker_dml;
+            REVOKE CREATE ON SCHEMA staging FROM worker_dml;
+
+            -- batch_dml: read-only SELECT on staging; operational DML across analytics and batch schemas
+            GRANT USAGE ON SCHEMA staging, analytics, batch TO batch_dml;
+            GRANT SELECT ON ALL TABLES IN SCHEMA staging TO batch_dml;
+            REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA staging FROM batch_dml;
+            REVOKE CREATE ON SCHEMA staging, analytics, batch FROM batch_dml;
+
+            GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA analytics TO batch_dml;
+            GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA analytics TO batch_dml;
+
+            GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA batch TO batch_dml;
+            GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA batch TO batch_dml;
+
+            -- powerbi_reader: read-only access strictly to analytical star-schema tables
+            REVOKE ALL ON SCHEMA staging, batch FROM powerbi_reader;
+            GRANT USAGE ON SCHEMA analytics TO powerbi_reader;
+            GRANT SELECT ON TABLE analytics.dim_date,
+                                  analytics.dim_time,
+                                  analytics.dim_region,
+                                  analytics.dim_item,
+                                  analytics.dim_station,
+                                  analytics.fact_market_daily_summary,
+                                  analytics.fact_order_book_liquidity TO powerbi_reader;
+
+            -- Explicitly deny powerbi_reader access to internal operational sync metadata and sequences
+            REVOKE ALL ON TABLE analytics.sde_metadata FROM powerbi_reader;
+            REVOKE ALL ON ALL SEQUENCES IN SCHEMA analytics FROM powerbi_reader;
+
+            -- Default privileges for future tables/sequences (powerbi_reader requires explicit allow-list grants)
+            ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT SELECT, INSERT, UPDATE ON TABLES TO worker_dml;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA staging GRANT SELECT ON TABLES TO batch_dml;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT SELECT, INSERT, UPDATE ON TABLES TO batch_dml;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA analytics GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO batch_dml;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA batch GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_dml;
+            ALTER DEFAULT PRIVILEGES IN SCHEMA batch GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO batch_dml;
+
+            DO $$
+            BEGIN
+                IF pg_has_role(CURRENT_USER, 'liquibase_ddl', 'MEMBER') OR CURRENT_USER = 'liquibase_ddl' THEN
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA staging GRANT SELECT, INSERT, UPDATE ON TABLES TO worker_dml;
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA staging GRANT SELECT ON TABLES TO batch_dml;
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA analytics GRANT SELECT, INSERT, UPDATE ON TABLES TO batch_dml;
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA analytics GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO batch_dml;
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA batch GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO batch_dml;
+                    ALTER DEFAULT PRIVILEGES FOR ROLE liquibase_ddl IN SCHEMA batch GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO batch_dml;
+                END IF;
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END
+            $$;
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

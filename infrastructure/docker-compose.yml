@@ -5,14 +5,23 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-eve_bi}
-      POSTGRES_USER: ${POSTGRES_USER:-eve_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-eve_password}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:-eve_user}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-eve_password}
+      POSTGRES_LIQUIBASE_USER: ${POSTGRES_LIQUIBASE_USER:-liquibase_ddl}
+      POSTGRES_LIQUIBASE_PASSWORD: ${POSTGRES_LIQUIBASE_PASSWORD:-eve_password}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-worker_dml}
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:-eve_password}
+      POSTGRES_BATCH_USER: ${POSTGRES_BATCH_USER:-batch_dml}
+      POSTGRES_BATCH_PASSWORD: ${POSTGRES_BATCH_PASSWORD:-eve_password}
+      POSTGRES_POWERBI_USER: ${POSTGRES_POWERBI_USER:-powerbi_reader}
+      POSTGRES_POWERBI_PASSWORD: ${POSTGRES_POWERBI_PASSWORD:-eve_password}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/01-init-roles.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-eve_user} -d ${POSTGRES_DB:-eve_bi}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER:-eve_user} -d ${POSTGRES_DB:-eve_bi}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -26,11 +35,14 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-eve_user}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-eve_password}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/eve_market}
     ports:
       - "${RABBITMQ_AMQP_PORT:-5672}:5672"    # AMQP broker port
       - "${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"  # Management UI & HTTP API
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
