@@ -25,7 +25,7 @@ jobs:
           cache: 'maven'
 
       - name: Cache OWASP NVD Database
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .owasp-data
           key: ${{ runner.os }}-owasp-nvd
