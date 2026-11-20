@@ -1,0 +1,50 @@
+name: Supply Chain Security Audit
+
+on:
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  owasp-dependency-check:
+    name: OWASP Dependency-Check CVE Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+
+      - name: Cache OWASP NVD Database
+        uses: actions/cache@v4
+        with:
+          path: .owasp-data
+          key: ${{ runner.os }}-owasp-nvd
+          restore-keys: ${{ runner.os }}-owasp-nvd
+
+      - name: Ensure Maven wrapper is executable
+        run: chmod +x mvnw
+
+      - name: Run OWASP Dependency-Check Aggregate Scan
+        env:
+          NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
+        run: ./mvnw -B verify -Psecurity-audit -DskipTests
+
+      - name: Upload OWASP Dependency-Check Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: owasp-dependency-check-report
+          path: |
+            target/dependency-check-report.html
+            target/dependency-check-report.json
+          if-no-files-found: ignore

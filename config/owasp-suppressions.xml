@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!--
+      Documented false-positive or accepted-risk CVE suppressions for OWASP Dependency-Check.
+      Every suppression added here MUST include a <notes> element explaining the rationale
+      and verification status, and an `until` attribute for periodic re-evaluation.
+    -->
+</suppressions>
