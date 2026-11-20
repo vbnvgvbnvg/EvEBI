@@ -109,7 +109,7 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Secure operational batch REST triggers (`/api/v1/jobs/**`) using Spring Security (API key, mTLS, or role-based authorization) or isolate them to an internal cluster management network interface.
   - [x] **Supply Chain & Secrets Management:**
     - [x] Externalize all production secrets and enforce zero plain-text credential commits.
-    - [x] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.
+    - [x] Integrate dependency vulnerability audits (OWASP Dependency-Check / GitHub Dependabot Alerts) in the build lifecycle.
     - [x] Add multi-stage `Dockerfile`s and Kubernetes `Deployment` manifests for `ingestion-poller` and `worker-service`.
   - [ ] **Platform & Dependency Modernization (Spring Boot 4.x Upgrade):**
     - [ ] Upgrade Spring Boot (`3.2.4` → `4.x`) and remediate High/Critical CVEs surfaced by `-Psecurity-audit` (Tomcat, Netty, Spring Framework, Jackson, PostgreSQL driver, RabbitMQ AMQP client, Log4j).

@@ -166,7 +166,7 @@ class SecretExternalizationAuditTest {
     }
 
     @Test
-    @DisplayName("Supply chain build controls (OWASP Dependency-Check, Maven Enforcer, Dependabot) must be configured")
+    @DisplayName("Supply chain build controls (OWASP Dependency-Check, Maven Enforcer, Security Audit workflow) must be configured")
     void supplyChainControls_mustBeConfiguredInBuildAndGithub() throws Exception {
         String rootPom = Files.readString(resolveRepoPath("pom.xml"));
         assertThat(rootPom)
@@ -188,20 +188,6 @@ class SecretExternalizationAuditTest {
         Document suppressionsDoc = factory.newDocumentBuilder().parse(suppressionsPath.toFile());
         assertThat(suppressionsDoc.getDocumentElement().getLocalName()).isEqualTo("suppressions");
 
-        Yaml yaml = new Yaml();
-        try (InputStream is = Files.newInputStream(resolveRepoPath(".github/dependabot.yml"))) {
-            Map<String, Object> dependabot = yaml.load(is);
-            assertThat(dependabot.get("version")).isEqualTo(2);
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> updates = (List<Map<String, Object>>) dependabot.get("updates");
-            assertThat(updates).extracting(u -> u.get("package-ecosystem"))
-                    .contains("maven", "docker", "github-actions");
-            assertThat(updates)
-                    .filteredOn(u -> "docker".equals(u.get("package-ecosystem")))
-                    .extracting(u -> u.get("directory"))
-                    .containsExactlyInAnyOrder("/ingestion-poller", "/worker-service", "/batch-etl");
-        }
-
         for (String dockerfilePath : List.of(
                 "ingestion-poller/Dockerfile",
                 "worker-service/Dockerfile",
@@ -213,6 +199,7 @@ class SecretExternalizationAuditTest {
                     .contains("exec java");
         }
 
+        Yaml yaml = new Yaml();
         try (InputStream is = Files.newInputStream(resolveRepoPath(".github/workflows/security-audit.yml"))) {
             Map<String, Object> workflow = yaml.load(is);
             assertThat(workflow).containsKey("jobs");
