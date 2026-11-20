@@ -1,8 +1,8 @@
 package com.github.serbentd.eve.poller.service;
 
 import com.github.serbentd.eve.poller.config.PollerProperties;
-import com.github.serbentd.eve.poller.event.MarketOrderEvent;
-import com.github.serbentd.eve.poller.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

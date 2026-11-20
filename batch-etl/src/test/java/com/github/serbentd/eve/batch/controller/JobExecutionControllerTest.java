@@ -46,6 +46,8 @@ class JobExecutionControllerTest {
     private static final String DAILY_SUMMARY_URL = "/api/v1/jobs/daily-summary";
     private static final String LIQUIDITY_URL = "/api/v1/jobs/liquidity";
     private static final String EXECUTIONS_URL = "/api/v1/jobs/executions/";
+    private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String API_KEY_VALUE = "test-api-key";
 
     private final MockMvc mockMvc;
     private final JobExplorer jobExplorer;
@@ -74,7 +76,7 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("POST /api/v1/jobs/regions-sync should return HTTP 200 and success status")
     void triggerRegionsSync_shouldReturnHttp200() throws Exception {
-        mockMvc.perform(post(REGIONS_SYNC_URL))
+        mockMvc.perform(post(REGIONS_SYNC_URL).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SUCCESS"))
                 .andExpect(jsonPath("$.regionsSynchronized").isNumber());
@@ -84,6 +86,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/seed-dimensions should return HTTP 200 when date range is valid")
     void seedDimensions_whenValidRange_shouldReturnHttp200() throws Exception {
         mockMvc.perform(post(SEED_DIMENSIONS_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("startYear", "2026")
                         .param("endYear", "2027"))
                 .andExpect(status().isOk())
@@ -95,6 +98,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/seed-dimensions should return HTTP 400 when startYear > endYear")
     void seedDimensions_whenInvalidRange_shouldReturnHttp400() throws Exception {
         mockMvc.perform(post(SEED_DIMENSIONS_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("startYear", "2030")
                         .param("endYear", "2025"))
                 .andExpect(status().isBadRequest());
@@ -103,7 +107,7 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("POST /api/v1/jobs/sde-sync should dispatch asynchronously and return HTTP 202 Accepted")
     void triggerSdeSync_shouldReturnHttp202() throws Exception {
-        mockMvc.perform(post(SDE_SYNC_URL))
+        mockMvc.perform(post(SDE_SYNC_URL).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobName").value("sdeSyncJob"))
                 .andExpect(jsonPath("$.jobExecutionId").isNumber());
@@ -113,6 +117,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/daily-summary should dispatch asynchronously and return HTTP 202 Accepted")
     void triggerDailySummary_whenValidDate_shouldReturnHttp202() throws Exception {
         mockMvc.perform(post(DAILY_SUMMARY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("targetDate", "2026-04-12"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobName").value("dailyMarketSummaryJob"))
@@ -123,6 +128,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/daily-summary should return HTTP 400 when date format is invalid")
     void triggerDailySummary_whenInvalidDate_shouldReturnHttp400() throws Exception {
         mockMvc.perform(post(DAILY_SUMMARY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("targetDate", "not-a-valid-date"))
                 .andExpect(status().isBadRequest());
     }
@@ -131,6 +137,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/liquidity should dispatch asynchronously and return HTTP 202 Accepted")
     void triggerLiquidity_whenValidInstant_shouldReturnHttp202() throws Exception {
         mockMvc.perform(post(LIQUIDITY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("snapshotTime", "2026-04-12T12:00:00Z"))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobName").value("orderBookLiquidityJob"))
@@ -141,6 +148,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/liquidity should return HTTP 400 when timestamp format is invalid")
     void triggerLiquidity_whenInvalidInstant_shouldReturnHttp400() throws Exception {
         mockMvc.perform(post(LIQUIDITY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("snapshotTime", "not-an-iso-instant"))
                 .andExpect(status().isBadRequest());
     }
@@ -148,7 +156,7 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("GET /api/v1/jobs/executions/{id} should return HTTP 404 when job does not exist")
     void getExecutionDetail_whenMissing_shouldReturnHttp404() throws Exception {
-        mockMvc.perform(get(EXECUTIONS_URL + "9999999"))
+        mockMvc.perform(get(EXECUTIONS_URL + "9999999").header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isNotFound());
     }
 
@@ -157,6 +165,7 @@ class JobExecutionControllerTest {
     void getExecutionDetail_whenPresent_shouldReturnHttp200() throws Exception {
         // First launch a job to create an execution
         MvcResult launchResult = mockMvc.perform(post(DAILY_SUMMARY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("targetDate", "2026-01-01"))
                 .andExpect(status().isAccepted())
                 .andReturn();
@@ -166,7 +175,7 @@ class JobExecutionControllerTest {
         long executionId = launchDto.jobExecutionId();
         assertThat(executionId).isPositive();
 
-        mockMvc.perform(get(EXECUTIONS_URL + executionId))
+        mockMvc.perform(get(EXECUTIONS_URL + executionId).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.jobExecutionId").value(executionId))
                 .andExpect(jsonPath("$.jobName").value("dailyMarketSummaryJob"))
@@ -178,6 +187,7 @@ class JobExecutionControllerTest {
     @DisplayName("POST /api/v1/jobs/sde-sync with custom URLs should dispatch asynchronously")
     void triggerSdeSync_withCustomUrls_shouldReturnHttp202() throws Exception {
         mockMvc.perform(post(SDE_SYNC_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
                         .param("itemsUrl", "classpath:sde/items_test.csv")
                         .param("stationsUrl", "classpath:sde/stations_test.csv"))
                 .andExpect(status().isAccepted())
@@ -187,7 +197,7 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("POST /api/v1/jobs/daily-summary without date should default to today UTC and return HTTP 202")
     void triggerDailySummary_withoutDate_shouldReturnHttp202() throws Exception {
-        mockMvc.perform(post(DAILY_SUMMARY_URL))
+        mockMvc.perform(post(DAILY_SUMMARY_URL).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobName").value("dailyMarketSummaryJob"));
     }
@@ -195,7 +205,7 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("POST /api/v1/jobs/liquidity without snapshotTime should default to now and return HTTP 202")
     void triggerLiquidity_withoutSnapshotTime_shouldReturnHttp202() throws Exception {
-        mockMvc.perform(post(LIQUIDITY_URL))
+        mockMvc.perform(post(LIQUIDITY_URL).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isAccepted())
                 .andExpect(jsonPath("$.jobName").value("orderBookLiquidityJob"));
     }
@@ -326,7 +336,7 @@ class JobExecutionControllerTest {
         for (int i = 0; i < threadCount; i++) {
             futures.add(executor.submit(() -> {
                 startLatch.await();
-                return mockMvc.perform(post(LIQUIDITY_URL))
+                return mockMvc.perform(post(LIQUIDITY_URL).header(API_KEY_HEADER, API_KEY_VALUE))
                         .andReturn().getResponse().getStatus();
             }));
         }

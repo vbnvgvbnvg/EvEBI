@@ -1,8 +1,8 @@
 package com.github.serbentd.eve.poller.service;
 
 import com.github.serbentd.eve.poller.config.PollerProperties;
-import com.github.serbentd.eve.poller.event.MarketOrderEvent;
-import com.github.serbentd.eve.poller.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;

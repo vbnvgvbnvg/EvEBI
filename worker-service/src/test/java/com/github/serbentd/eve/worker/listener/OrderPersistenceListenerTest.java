@@ -1,7 +1,7 @@
 package com.github.serbentd.eve.worker.listener;
 
-import com.github.serbentd.eve.worker.event.MarketOrderEvent;
-import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.github.serbentd.eve.worker.service.OrderPersistenceService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

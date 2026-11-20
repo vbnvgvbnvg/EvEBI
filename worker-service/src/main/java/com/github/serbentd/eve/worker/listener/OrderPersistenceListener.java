@@ -1,7 +1,7 @@
 package com.github.serbentd.eve.worker.listener;
 
-import com.github.serbentd.eve.worker.event.MarketOrderEvent;
-import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.github.serbentd.eve.worker.service.OrderPersistenceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

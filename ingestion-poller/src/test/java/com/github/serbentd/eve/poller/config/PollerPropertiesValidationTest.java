@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.poller.config;
 
+import com.github.serbentd.eve.common.security.EveSecurityProperties;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -155,6 +156,26 @@ class PollerPropertiesValidationTest {
                 .collect(Collectors.toSet());
 
         assertThat(violatedPaths).contains("esi", "scheduling", "amqp", "discovery");
+    }
+
+    @Test
+    void validate_whenSecurityPropertiesValid_shouldHaveZeroViolations() {
+        EveSecurityProperties validSecurity = new EveSecurityProperties(
+                "eve_admin", "eve_password", "X-API-Key",
+                List.of("eve_local_api_key"), List.of("eve_local_actuator_key"), List.of()
+        );
+        assertThat(validator.validate(validSecurity)).isEmpty();
+    }
+
+    @Test
+    void validate_whenSecurityPropertiesBlank_shouldDetectConstraintViolations() {
+        EveSecurityProperties invalidSecurity = new EveSecurityProperties(
+                "", "  ", "", List.of(), List.of(), null
+        );
+        Set<String> violatedPaths = validator.validate(invalidSecurity).stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+        assertThat(violatedPaths).contains("username", "password", "apiKeyHeader", "adminApiKeys", "actuatorApiKeys");
     }
 
     private PollerProperties createValidProperties() {

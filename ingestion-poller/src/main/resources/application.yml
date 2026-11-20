@@ -38,8 +38,16 @@ eve:
       max-region-id: ${EVE_POLLER_MAX_REGION_ID:11000000}
       refresh-rate: ${EVE_POLLER_DISCOVERY_REFRESH_RATE:PT24H}
       compatibility-date: ${EVE_POLLER_COMPATIBILITY_DATE:2020-01-01}
+  security:
+    username: ${EVE_SECURITY_USER:eve_admin}
+    password: ${EVE_SECURITY_PASSWORD:eve_password}
+    api-key-header: ${EVE_SECURITY_API_KEY_HEADER:X-API-Key}
+    admin-api-keys: ${EVE_SECURITY_API_KEYS:eve_local_api_key}
+    actuator-api-keys: ${EVE_SECURITY_ACTUATOR_API_KEYS:eve_local_actuator_key}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9081}
   endpoints:
     web:
       exposure:
@@ -47,7 +55,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when_authorized}
       probes:
         enabled: true
       group:

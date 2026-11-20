@@ -1,8 +1,8 @@
 package com.github.serbentd.eve.worker.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.serbentd.eve.worker.event.MarketOrderEvent;
-import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

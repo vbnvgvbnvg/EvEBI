@@ -32,6 +32,16 @@ eve:
     batch-size: 500
     queue-ttl: 2h
     queue-max-length: 1000000
+  security:
+    username: test-admin
+    password: test-password
+    api-key-header: X-API-Key
+    admin-api-keys:
+      - test-api-key
+      - test-admin-key-rotated
+    actuator-api-keys:
+      - test-actuator-key
+      - test-actuator-key-rotated
 
 management:
   endpoints:
@@ -41,7 +51,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: always
+      show-details: when_authorized
       probes:
         enabled: true
       group:

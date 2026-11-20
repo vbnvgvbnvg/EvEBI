@@ -1,6 +1,8 @@
 package com.github.serbentd.eve.poller.event;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.ConstraintViolation;

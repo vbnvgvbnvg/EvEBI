@@ -29,6 +29,7 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
 ## 2. Module Responsibilities
 | Module | Packaging | Key Responsibilities |
 |---|---|---|
+| `eve-common` | jar | Shared AMQP transit event records, role-scoped API key security properties, and authentication filters |
 | `esi-client` | jar | Generates WebClient API bindings from `openapi.json` |
 | `ingestion-poller` | jar (boot) | Scheduled polling, ESI error-rate monitoring, AMQP publishing |
 | `worker-service` | jar (boot) | Queue consumers, validation, Liquibase migrations, PostgreSQL writes |
@@ -103,9 +104,9 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Configure least-privilege PostgreSQL roles via Liquibase (`worker_dml`, `batch_dml`, `liquibase_ddl`, `powerbi_reader` read-only, with isolated `liquibase` schema and locked-down `public` schema).
     - [x] Configure RabbitMQ dedicated virtual host (`/eve_market`) with scoped producer write-only (`poller_producer`, `batch_manager_producer`) and consumer read-only (`worker_consumer`, `batch_worker_consumer`) access.
     - [x] Enforce SSL/TLS transport encryption (`sslmode=require` for Postgres, `amqps://` for RabbitMQ).
-  - [ ] **Management Endpoint & Batch API Security:**
-    - [ ] Configure Spring Security to protect sensitive Actuator endpoints while preserving unauthenticated access for container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`).
-    - [ ] Secure operational batch REST triggers (`/api/v1/jobs/**`) using Spring Security (API key, mTLS, or role-based authorization) or isolate them to an internal cluster management network interface.
+  - [x] **Management Endpoint & Batch API Security:**
+    - [x] Configure Spring Security to protect sensitive Actuator endpoints while preserving unauthenticated access for container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`).
+    - [x] Secure operational batch REST triggers (`/api/v1/jobs/**`) using Spring Security (API key, mTLS, or role-based authorization) or isolate them to an internal cluster management network interface.
   - [ ] **Supply Chain & Secrets Management:**
     - [ ] Externalize all production secrets and enforce zero plain-text credential commits.
     - [ ] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.

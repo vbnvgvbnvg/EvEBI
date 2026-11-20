@@ -19,6 +19,8 @@ class BatchHealthIntegrationTest {
     private static final String HEALTH_PATH = "/actuator/health";
     private static final String LIVENESS_PATH = "/actuator/health/liveness";
     private static final String READINESS_PATH = "/actuator/health/readiness";
+    private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String API_KEY_VALUE = "test-api-key";
     private static final String STATUS_UP = "UP";
 
     private final MockMvc mockMvc;
@@ -36,18 +38,30 @@ class BatchHealthIntegrationTest {
     }
 
     @Test
-    @DisplayName("Readiness probe should return HTTP 200 and status UP with database")
-    void readinessProbe_shouldReturnHttp200AndStatusUpWithDatabase() throws Exception {
+    @DisplayName("Readiness probe should return HTTP 200 without details when unauthenticated")
+    void readinessProbe_shouldReturnHttp200WithoutDetailsWhenUnauthenticated() throws Exception {
         mockMvc.perform(get(READINESS_PATH))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(STATUS_UP))
+                .andExpect(jsonPath("$.components").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("Readiness probe should return HTTP 200 and status UP with database when authenticated")
+    void readinessProbe_shouldReturnHttp200AndStatusUpWithDatabaseWhenAuthenticated() throws Exception {
+        mockMvc.perform(get(READINESS_PATH).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(STATUS_UP))
                 .andExpect(jsonPath("$.components.db.status").value(STATUS_UP));
     }
 
     @Test
-    @DisplayName("Overall health should return HTTP 200 and status UP")
-    void overallHealth_shouldReturnHttp200AndStatusUp() throws Exception {
+    @DisplayName("Overall health should require auth and return HTTP 200 when authenticated")
+    void overallHealth_shouldRequireAuthAndReturnHttp200WhenAuthenticated() throws Exception {
         mockMvc.perform(get(HEALTH_PATH))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get(HEALTH_PATH).header(API_KEY_HEADER, API_KEY_VALUE))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(STATUS_UP));
     }

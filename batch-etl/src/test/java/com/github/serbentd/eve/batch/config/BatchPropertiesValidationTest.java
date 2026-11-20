@@ -2,6 +2,7 @@ package com.github.serbentd.eve.batch.config;
 
 import com.github.serbentd.eve.batch.dto.SdeItemDto;
 import com.github.serbentd.eve.batch.dto.SdeStationDto;
+import com.github.serbentd.eve.common.security.EveSecurityProperties;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -351,6 +352,26 @@ class BatchPropertiesValidationTest {
         assertThat(station1).isEqualTo(station2);
         assertThat(station1.hashCode()).isEqualTo(station2.hashCode());
         assertThat(station1.stationName()).isEqualTo("Jita IV - Moon 4");
+    }
+
+    @Test
+    @DisplayName("Should validate EveSecurityProperties NotBlank and NotEmpty constraints")
+    void validate_whenEveSecurityPropertiesInvalid_shouldDetectViolations() {
+        EveSecurityProperties valid = new EveSecurityProperties(
+                "eve_admin", "eve_password", "X-API-Key",
+                java.util.List.of("eve_local_api_key"),
+                java.util.List.of("eve_local_actuator_key"),
+                java.util.List.of("eve_local_operator_key")
+        );
+        assertThat(validator.validate(valid)).isEmpty();
+
+        EveSecurityProperties invalid = new EveSecurityProperties(
+                "", "   ", "", java.util.List.of(), java.util.List.of(), null
+        );
+        Set<String> violatedPaths = validator.validate(invalid).stream()
+                .map(v -> v.getPropertyPath().toString())
+                .collect(Collectors.toSet());
+        assertThat(violatedPaths).contains("username", "password", "apiKeyHeader", "adminApiKeys", "actuatorApiKeys");
     }
 
     private static BatchProperties createValidProperties() {

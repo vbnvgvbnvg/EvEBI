@@ -10,6 +10,7 @@ COPY mvnw mvnw
 RUN chmod +x mvnw
 
 # Copy module POMs for layer caching
+COPY eve-common/pom.xml eve-common/
 COPY esi-client/pom.xml esi-client/
 COPY ingestion-poller/pom.xml ingestion-poller/
 COPY worker-service/pom.xml worker-service/
@@ -19,6 +20,7 @@ COPY batch-etl/pom.xml batch-etl/
 RUN ./mvnw dependency:go-offline -B -pl batch-etl -am || true
 
 # Copy required module source trees
+COPY eve-common/ eve-common/
 COPY esi-client/ esi-client/
 COPY batch-etl/ batch-etl/
 
@@ -39,7 +41,7 @@ COPY --from=builder --chown=evebi:evebi /build/batch-etl/target/batch-etl-*.jar 
 
 USER 10001:10001
 
-EXPOSE 8083
+EXPOSE 8083 9083
 
 # exec java ensures PID 1 signal forwarding for unhindered SIGTERM handling
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar /app/app.jar \"$@\"", "--"]
