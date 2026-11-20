@@ -108,6 +108,12 @@ class KubernetesManifestValidationTest {
             assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
             assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-manager-username");
             assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-manager-password");
+            assertSecretKeyRefPresent(envList, "EVE_SECURITY_USER", "eve-security-credentials", "username");
+            assertSecretKeyRefPresent(envList, "EVE_SECURITY_PASSWORD", "eve-security-credentials", "password");
+            assertSecretKeyRefPresent(envList, "EVE_SECURITY_API_KEYS", "eve-security-credentials", "admin-api-keys");
+            assertSecretKeyRefPresent(envList, "EVE_SECURITY_ACTUATOR_API_KEYS", "eve-security-credentials", "actuator-api-keys");
+            assertSecretKeyRefPresent(envList, "EVE_SECURITY_OPERATOR_API_KEYS", "eve-security-credentials", "operator-api-keys");
+            assertThat(getEnvValue(envList, "MANAGEMENT_SERVER_PORT")).isEqualTo("9083");
         }
     }
 
@@ -167,6 +173,12 @@ class KubernetesManifestValidationTest {
         assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
         assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-worker-username");
         assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-worker-password");
+        assertSecretKeyRefPresent(envList, "EVE_SECURITY_USER", "eve-security-credentials", "username");
+        assertSecretKeyRefPresent(envList, "EVE_SECURITY_PASSWORD", "eve-security-credentials", "password");
+        assertSecretKeyRefPresent(envList, "EVE_SECURITY_API_KEYS", "eve-security-credentials", "admin-api-keys");
+        assertSecretKeyRefPresent(envList, "EVE_SECURITY_ACTUATOR_API_KEYS", "eve-security-credentials", "actuator-api-keys");
+        assertSecretKeyRefPresent(envList, "EVE_SECURITY_OPERATOR_API_KEYS", "eve-security-credentials", "operator-api-keys");
+        assertThat(getEnvValue(envList, "MANAGEMENT_SERVER_PORT")).isEqualTo("9083");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> livenessProbe = (Map<String, Object>) container.get("livenessProbe");
@@ -174,6 +186,7 @@ class KubernetesManifestValidationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> livenessHttpGet = (Map<String, Object>) livenessProbe.get("httpGet");
         assertThat(livenessHttpGet.get("path")).isEqualTo("/actuator/health/liveness");
+        assertThat(livenessHttpGet.get("port")).isEqualTo(9083);
 
         @SuppressWarnings("unchecked")
         Map<String, Object> readinessProbe = (Map<String, Object>) container.get("readinessProbe");
@@ -181,6 +194,7 @@ class KubernetesManifestValidationTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> readinessHttpGet = (Map<String, Object>) readinessProbe.get("httpGet");
         assertThat(readinessHttpGet.get("path")).isEqualTo("/actuator/health/readiness");
+        assertThat(readinessHttpGet.get("port")).isEqualTo(9083);
     }
 
     @Test
@@ -196,6 +210,10 @@ class KubernetesManifestValidationTest {
         assertThat(dockerfileContent)
                 .withFailMessage("Dockerfile must run as non-root user")
                 .contains("USER 10001:10001");
+
+        assertThat(dockerfileContent)
+                .withFailMessage("Dockerfile must expose both primary HTTP port 8083 and isolated management port 9083")
+                .contains("EXPOSE 8083 9083");
     }
 
     private void assertDownwardApiEnvPresent(List<Map<String, Object>> envList, String envName, String expectedFieldPath) {

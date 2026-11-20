@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.github.serbentd.eve.worker.event.MarketOrderEvent;
-import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
@@ -34,6 +34,7 @@ import java.util.List;
 @EnableConfigurationProperties(MarketProperties.class)
 public class RabbitMqConfig {
 
+    private static final String TRUSTED_COMMON_EVENT_PACKAGE = "com.github.serbentd.eve.common.event";
     private static final String TRUSTED_WORKER_EVENT_PACKAGE = "com.github.serbentd.eve.worker.event";
     private static final String TRUSTED_POLLER_EVENT_PACKAGE = "com.github.serbentd.eve.poller.event";
 
@@ -71,12 +72,14 @@ public class RabbitMqConfig {
             public JavaType toJavaType(MessageProperties properties) {
                 String classId = (String) properties.getHeaders().get(DEFAULT_CLASSID_FIELD_NAME);
                 if (classId != null) {
-                    if (!classId.startsWith(TRUSTED_WORKER_EVENT_PACKAGE + ".")
+                    if (!classId.startsWith(TRUSTED_COMMON_EVENT_PACKAGE + ".")
+                            && !classId.startsWith(TRUSTED_WORKER_EVENT_PACKAGE + ".")
                             && !classId.startsWith(TRUSTED_POLLER_EVENT_PACKAGE + ".")
                             && !classId.startsWith("java.util.")) {
                         throw new IllegalArgumentException(
                                 "The class [" + classId + "] is not in the trusted packages: "
-                                        + "[" + TRUSTED_WORKER_EVENT_PACKAGE + ", " + TRUSTED_POLLER_EVENT_PACKAGE + "]");
+                                        + "[" + TRUSTED_COMMON_EVENT_PACKAGE + ", "
+                                        + TRUSTED_WORKER_EVENT_PACKAGE + ", " + TRUSTED_POLLER_EVENT_PACKAGE + "]");
                     }
                     if (classId.endsWith(".RegionSnapshotCompletedEvent")) {
                         return snapshotType;
@@ -90,6 +93,7 @@ public class RabbitMqConfig {
         };
 
         typeMapper.setTrustedPackages(
+                TRUSTED_COMMON_EVENT_PACKAGE,
                 TRUSTED_WORKER_EVENT_PACKAGE,
                 TRUSTED_POLLER_EVENT_PACKAGE
         );

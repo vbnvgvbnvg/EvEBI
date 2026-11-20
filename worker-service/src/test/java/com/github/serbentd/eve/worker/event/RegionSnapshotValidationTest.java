@@ -1,5 +1,6 @@
 package com.github.serbentd.eve.worker.event;
 
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

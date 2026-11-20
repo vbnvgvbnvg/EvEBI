@@ -32,7 +32,11 @@ spec:
               ports:
                 - containerPort: 8083
                   name: http
+                - containerPort: 9083
+                  name: management
               env:
+                - name: MANAGEMENT_SERVER_PORT
+                  value: "9083"
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
@@ -89,6 +93,31 @@ spec:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
                       key: batch-manager-password
+                - name: EVE_SECURITY_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: username
+                - name: EVE_SECURITY_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: password
+                - name: EVE_SECURITY_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: admin-api-keys
+                - name: EVE_SECURITY_ACTUATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: actuator-api-keys
+                - name: EVE_SECURITY_OPERATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: operator-api-keys
               resources:
                 requests:
                   cpu: "500m"
@@ -131,7 +160,11 @@ spec:
               ports:
                 - containerPort: 8083
                   name: http
+                - containerPort: 9083
+                  name: management
               env:
+                - name: MANAGEMENT_SERVER_PORT
+                  value: "9083"
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
@@ -190,6 +223,31 @@ spec:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
                       key: batch-manager-password
+                - name: EVE_SECURITY_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: username
+                - name: EVE_SECURITY_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: password
+                - name: EVE_SECURITY_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: admin-api-keys
+                - name: EVE_SECURITY_ACTUATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: actuator-api-keys
+                - name: EVE_SECURITY_OPERATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: operator-api-keys
               resources:
                 requests:
                   cpu: "500m"
@@ -232,7 +290,11 @@ spec:
               ports:
                 - containerPort: 8083
                   name: http
+                - containerPort: 9083
+                  name: management
               env:
+                - name: MANAGEMENT_SERVER_PORT
+                  value: "9083"
                 - name: POD_NAME
                   valueFrom:
                     fieldRef:
@@ -291,6 +353,31 @@ spec:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
                       key: batch-manager-password
+                - name: EVE_SECURITY_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: username
+                - name: EVE_SECURITY_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: password
+                - name: EVE_SECURITY_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: admin-api-keys
+                - name: EVE_SECURITY_ACTUATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: actuator-api-keys
+                - name: EVE_SECURITY_OPERATOR_API_KEYS
+                  valueFrom:
+                    secretKeyRef:
+                      name: eve-security-credentials
+                      key: operator-api-keys
               resources:
                 requests:
                   cpu: "500m"

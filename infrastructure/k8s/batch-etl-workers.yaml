@@ -31,7 +31,11 @@ spec:
           ports:
             - containerPort: 8083
               name: http
+            - containerPort: 9083
+              name: management
           env:
+            - name: MANAGEMENT_SERVER_PORT
+              value: "9083"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
@@ -90,10 +94,35 @@ spec:
                 secretKeyRef:
                   name: eve-rabbitmq-credentials
                   key: batch-worker-password
+            - name: EVE_SECURITY_USER
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: username
+            - name: EVE_SECURITY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: password
+            - name: EVE_SECURITY_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: admin-api-keys
+            - name: EVE_SECURITY_ACTUATOR_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: actuator-api-keys
+            - name: EVE_SECURITY_OPERATOR_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: operator-api-keys
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: 8083
+              port: 9083
             initialDelaySeconds: 30
             periodSeconds: 10
             timeoutSeconds: 5
@@ -101,7 +130,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: 8083
+              port: 9083
             initialDelaySeconds: 20
             periodSeconds: 10
             timeoutSeconds: 5

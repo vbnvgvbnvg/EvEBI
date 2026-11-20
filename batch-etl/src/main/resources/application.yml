@@ -109,8 +109,17 @@ eve:
       pod-node-name: ${POD_NODE_NAME:local-node}
       execution-mode: ${EVE_BATCH_EXECUTION_MODE:DAEMON}
       exit-on-completion: ${EVE_BATCH_EXIT_ON_COMPLETION:true}
+  security:
+    username: ${EVE_SECURITY_USER:eve_admin}
+    password: ${EVE_SECURITY_PASSWORD:eve_password}
+    api-key-header: ${EVE_SECURITY_API_KEY_HEADER:X-API-Key}
+    admin-api-keys: ${EVE_SECURITY_API_KEYS:eve_local_api_key}
+    actuator-api-keys: ${EVE_SECURITY_ACTUATOR_API_KEYS:eve_local_actuator_key}
+    operator-api-keys: ${EVE_SECURITY_OPERATOR_API_KEYS:eve_local_operator_key}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9083}
   endpoints:
     web:
       exposure:
@@ -118,7 +127,7 @@ management:
       base-path: /actuator
   endpoint:
     health:
-      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:always}
+      show-details: ${MANAGEMENT_HEALTH_SHOW_DETAILS:when_authorized}
       # The rabbit contributor is disabled by default on standalone (broker-less) deployments; allow
       # the readiness group to reference it without failing startup when rabbit health is disabled.
       validate-group-membership: false

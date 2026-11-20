@@ -1,4 +1,4 @@
-package com.github.serbentd.eve.poller.event;
+package com.github.serbentd.eve.common.event;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

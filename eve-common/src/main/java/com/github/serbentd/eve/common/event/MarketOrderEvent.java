@@ -1,4 +1,4 @@
-package com.github.serbentd.eve.poller.event;
+package com.github.serbentd.eve.common.event;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -10,7 +10,8 @@ import java.time.OffsetDateTime;
 
 /**
  * Immutable AMQP transit event representing an EVE Online market order snapshot.
- * Published by the ingestion poller to the market orders topic exchange.
+ * Published by the ingestion poller to the market orders topic exchange and consumed
+ * by the worker service.
  *
  * @param orderId      unique CCP order identifier
  * @param typeId       item type identifier (joins to invTypes)

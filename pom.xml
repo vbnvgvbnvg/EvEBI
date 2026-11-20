@@ -95,6 +95,7 @@
     </build>
 
     <modules>
+        <module>eve-common</module>
         <module>esi-client</module>
         <module>ingestion-poller</module>
         <module>worker-service</module>

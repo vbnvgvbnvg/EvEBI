@@ -2,8 +2,8 @@ package com.github.serbentd.eve.worker.integration;
 
 import com.github.serbentd.eve.worker.domain.MarketOrderEntity;
 import com.github.serbentd.eve.worker.domain.OrderStatus;
-import com.github.serbentd.eve.worker.event.MarketOrderEvent;
-import com.github.serbentd.eve.worker.event.RegionSnapshotCompletedEvent;
+import com.github.serbentd.eve.common.event.MarketOrderEvent;
+import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.github.serbentd.eve.worker.listener.OrderPersistenceListener;
 import com.github.serbentd.eve.worker.repository.MarketOrderRepository;
 import org.junit.jupiter.api.Test;

@@ -18,10 +18,11 @@
 ## Project Organization & Module Boundaries
 
 ### Multi-Module Structure
+- `eve-common`: Shared transit event records (`MarketOrderEvent`, `RegionSnapshotCompletedEvent`) and cross-cutting security components (`EveSecurityProperties`, `ApiKeyAuthenticator`, `ServletApiKeyAuthenticationFilter`). Does not depend on any sibling module.
 - `esi-client`: OpenAPI-generated code and base reactive WebClient configuration. Does not depend on any sibling module.
-- `ingestion-poller`: Scheduled polling services, rate limiting, and RabbitMQ message publishers. Depends only on `esi-client`.
-- `worker-service`: RabbitMQ listeners, business validation, JPA entities, Liquibase changelogs, QueryDSL repositories, and bulk persistence.
-- `batch-etl`: Spring Batch jobs for daily aggregations, rollups, and analytical star schema transformations.
+- `ingestion-poller`: Scheduled polling services, rate limiting, and RabbitMQ message publishers. Depends on `eve-common` and `esi-client`.
+- `worker-service`: RabbitMQ listeners, business validation, JPA entities, Liquibase changelogs, QueryDSL repositories, and bulk persistence. Depends on `eve-common`.
+- `batch-etl`: Spring Batch jobs for daily aggregations, rollups, and analytical star schema transformations. Depends on `eve-common`.
 
 ### Package & File Naming Conventions
 - **Base Package:** `com.github.serbentd.eve` (or matching project groupId).
