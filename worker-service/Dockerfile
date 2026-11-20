@@ -1,5 +1,5 @@
 # Multi-stage build for worker-service
-FROM eclipse-temurin:21-jdk-alpine AS builder
+FROM eclipse-temurin:25-jdk-alpine AS builder
 
 WORKDIR /build
 
@@ -27,7 +27,7 @@ COPY worker-service/ worker-service/
 RUN ./mvnw clean package -pl worker-service -am -DskipTests
 
 # Runtime stage
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 
 # Security: non-root user and group
 RUN addgroup -g 10001 -S evebi && \
