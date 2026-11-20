@@ -70,11 +70,20 @@ public class RabbitMqConfig {
             @Override
             public JavaType toJavaType(MessageProperties properties) {
                 String classId = (String) properties.getHeaders().get(DEFAULT_CLASSID_FIELD_NAME);
-                if (classId != null && classId.contains("RegionSnapshotCompletedEvent")) {
-                    return snapshotType;
-                }
-                if (classId != null && classId.endsWith("MarketOrderEvent")) {
-                    return singleOrderType;
+                if (classId != null) {
+                    if (!classId.startsWith(TRUSTED_WORKER_EVENT_PACKAGE + ".")
+                            && !classId.startsWith(TRUSTED_POLLER_EVENT_PACKAGE + ".")
+                            && !classId.startsWith("java.util.")) {
+                        throw new IllegalArgumentException(
+                                "The class [" + classId + "] is not in the trusted packages: "
+                                        + "[" + TRUSTED_WORKER_EVENT_PACKAGE + ", " + TRUSTED_POLLER_EVENT_PACKAGE + "]");
+                    }
+                    if (classId.endsWith(".RegionSnapshotCompletedEvent")) {
+                        return snapshotType;
+                    }
+                    if (classId.endsWith(".MarketOrderEvent")) {
+                        return singleOrderType;
+                    }
                 }
                 return orderListType;
             }

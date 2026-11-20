@@ -100,13 +100,14 @@ class KubernetesManifestValidationTest {
             assertThat(getEnvValue(envList, "SPRING_RABBITMQ_VIRTUAL_HOST")).isEqualTo("/eve_market");
             assertThat(getEnvValue(envList, "SPRING_RABBITMQ_SSL_ENABLED")).isEqualTo("true");
 
-            // Secret-Driven Least-Privilege Credentials
-            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "worker-username");
-            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "worker-password");
+            // Secret-Driven Least-Privilege Credentials & Isolated Liquibase Schema
+            assertThat(getEnvValue(envList, "SPRING_LIQUIBASE_LIQUIBASE_SCHEMA")).isEqualTo("liquibase");
+            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "batch-username");
+            assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "batch-password");
             assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_USER", "eve-db-credentials", "liquibase-username");
             assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
-            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-username");
-            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-password");
+            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-manager-username");
+            assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-manager-password");
         }
     }
 
@@ -158,13 +159,14 @@ class KubernetesManifestValidationTest {
         assertThat(getEnvValue(envList, "SPRING_RABBITMQ_VIRTUAL_HOST")).isEqualTo("/eve_market");
         assertThat(getEnvValue(envList, "SPRING_RABBITMQ_SSL_ENABLED")).isEqualTo("true");
 
-        // Secret-Driven Least-Privilege Credentials
-        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "worker-username");
-        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "worker-password");
+        // Secret-Driven Least-Privilege Credentials & Isolated Liquibase Schema
+        assertThat(getEnvValue(envList, "SPRING_LIQUIBASE_LIQUIBASE_SCHEMA")).isEqualTo("liquibase");
+        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_USERNAME", "eve-db-credentials", "batch-username");
+        assertSecretKeyRefPresent(envList, "SPRING_DATASOURCE_PASSWORD", "eve-db-credentials", "batch-password");
         assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_USER", "eve-db-credentials", "liquibase-username");
         assertSecretKeyRefPresent(envList, "SPRING_LIQUIBASE_PASSWORD", "eve-db-credentials", "liquibase-password");
-        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-username");
-        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-password");
+        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_USERNAME", "eve-rabbitmq-credentials", "batch-worker-username");
+        assertSecretKeyRefPresent(envList, "SPRING_RABBITMQ_PASSWORD", "eve-rabbitmq-credentials", "batch-worker-password");
 
         @SuppressWarnings("unchecked")
         Map<String, Object> livenessProbe = (Map<String, Object>) container.get("livenessProbe");

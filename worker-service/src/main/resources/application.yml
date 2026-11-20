@@ -7,8 +7,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:eve_bi}?sslmode=${POSTGRES_SSL_MODE:prefer}
-    username: ${POSTGRES_USER:worker_dml}
-    password: ${POSTGRES_PASSWORD:eve_password}
+    username: ${POSTGRES_WORKER_USER:worker_dml}
+    password: ${POSTGRES_WORKER_PASSWORD:eve_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       pool-name: WorkerHikariPool
@@ -34,6 +34,7 @@ spring:
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml
+    liquibase-schema: ${POSTGRES_LIQUIBASE_SCHEMA:liquibase}
     user: ${POSTGRES_LIQUIBASE_USER:liquibase_ddl}
     password: ${POSTGRES_LIQUIBASE_PASSWORD:eve_password}
 

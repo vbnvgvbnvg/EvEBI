@@ -51,23 +51,35 @@ class LiquibaseSecurityChangelogTest {
     void securityChangelog_shouldEnforceLeastPrivilegeInvariants() throws Exception {
         String sql = Files.readString(resolvePath(SECURITY_CHANGELOG));
 
-        // Roles declaration
+        // Roles & isolated liquibase schema declaration
         assertThat(sql).contains("CREATE ROLE liquibase_ddl");
         assertThat(sql).contains("CREATE ROLE worker_dml");
+        assertThat(sql).contains("CREATE ROLE batch_dml");
         assertThat(sql).contains("CREATE ROLE powerbi_reader");
+        assertThat(sql).contains("CREATE SCHEMA IF NOT EXISTS liquibase");
 
-        // Public create revocation
+        // Public schema lockdown & liquibase schema isolation
+        assertThat(sql).contains("REVOKE ALL ON SCHEMA public FROM PUBLIC");
         assertThat(sql).contains("REVOKE CREATE ON SCHEMA staging, analytics, batch FROM PUBLIC");
+        assertThat(sql).contains("REVOKE ALL ON SCHEMA liquibase FROM PUBLIC, worker_dml, batch_dml, powerbi_reader");
 
         // liquibase_ddl migration admin
-        assertThat(sql).contains("GRANT USAGE, CREATE ON SCHEMA staging, analytics, batch TO liquibase_ddl");
-        assertThat(sql).contains("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA staging, analytics, batch TO liquibase_ddl");
+        assertThat(sql).contains("GRANT USAGE, CREATE ON SCHEMA liquibase, staging, analytics, batch TO liquibase_ddl");
+        assertThat(sql).contains("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA liquibase, staging, analytics, batch TO liquibase_ddl");
 
-        // worker_dml operational boundaries
-        assertThat(sql).contains("GRANT USAGE ON SCHEMA staging, analytics, batch TO worker_dml");
+        // worker_dml strictly isolated to staging (denied analytics & batch)
+        assertThat(sql).contains("REVOKE ALL ON SCHEMA analytics, batch FROM worker_dml");
+        assertThat(sql).contains("GRANT USAGE ON SCHEMA staging TO worker_dml");
         assertThat(sql).contains("GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA staging TO worker_dml");
         assertThat(sql).contains("REVOKE DELETE, TRUNCATE ON ALL TABLES IN SCHEMA staging FROM worker_dml");
-        assertThat(sql).contains("REVOKE CREATE ON SCHEMA staging, analytics, batch FROM worker_dml");
+
+        // batch_dml operational boundaries (SELECT on staging, DML on analytics and batch)
+        assertThat(sql).contains("GRANT USAGE ON SCHEMA staging, analytics, batch TO batch_dml");
+        assertThat(sql).contains("GRANT SELECT ON ALL TABLES IN SCHEMA staging TO batch_dml");
+        assertThat(sql).contains("REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON ALL TABLES IN SCHEMA staging FROM batch_dml");
+        assertThat(sql).contains("REVOKE CREATE ON SCHEMA staging, analytics, batch FROM batch_dml");
+        assertThat(sql).contains("GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA analytics TO batch_dml");
+        assertThat(sql).contains("GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA batch TO batch_dml");
 
         // powerbi_reader isolation: analytical SELECT only, zero staging/batch/metadata access
         assertThat(sql).contains("REVOKE ALL ON SCHEMA staging, batch FROM powerbi_reader");
@@ -76,6 +88,7 @@ class LiquibaseSecurityChangelogTest {
         assertThat(sql).contains("fact_order_book_liquidity");
         assertThat(sql).contains("REVOKE ALL ON TABLE analytics.sde_metadata FROM powerbi_reader");
         assertThat(sql).contains("REVOKE ALL ON ALL SEQUENCES IN SCHEMA analytics FROM powerbi_reader");
+        assertThat(sql).doesNotContain("GRANT SELECT ON TABLES TO powerbi_reader");
     }
 
     private Document parseXml(Path path) throws Exception {

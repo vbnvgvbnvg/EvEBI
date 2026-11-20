@@ -41,7 +41,12 @@ class RabbitMqTopologyDefinitionTest {
         assertThat(usersNode).isNotNull();
         List<String> users = new ArrayList<>();
         usersNode.forEach(u -> users.add(u.get("name").asText()));
-        assertThat(users).contains("poller_producer", "worker_consumer", "batch_broker");
+        assertThat(users).contains(
+                "poller_producer",
+                "worker_consumer",
+                "batch_manager_producer",
+                "batch_worker_consumer"
+        );
 
         // 3. Least-Privilege Permissions on /eve_market
         JsonNode permsNode = root.get("permissions");
@@ -49,7 +54,8 @@ class RabbitMqTopologyDefinitionTest {
 
         boolean pollerVerified = false;
         boolean workerVerified = false;
-        boolean batchVerified = false;
+        boolean batchManagerVerified = false;
+        boolean batchWorkerVerified = false;
 
         for (JsonNode perm : permsNode) {
             String vhost = perm.get("vhost").asText();
@@ -70,18 +76,25 @@ class RabbitMqTopologyDefinitionTest {
                 assertThat(perm.get("write").asText()).isEqualTo("^$");
                 assertThat(perm.get("read").asText()).isEqualTo("^eve\\.market\\.orders\\.worker$");
                 workerVerified = true;
-            } else if ("batch_broker".equals(user)) {
-                // Scoped to distributed batch partition exchange and queues
-                assertThat(perm.get("configure").asText()).contains("eve\\.batch\\.partition");
-                assertThat(perm.get("write").asText()).contains("eve\\.batch\\.partition");
-                assertThat(perm.get("read").asText()).contains("eve\\.batch\\.partition");
-                batchVerified = true;
+            } else if ("batch_manager_producer".equals(user)) {
+                // Batch Manager holds write-only publication rights on the partition exchange
+                assertThat(perm.get("configure").asText()).isEqualTo("^$");
+                assertThat(perm.get("write").asText()).isEqualTo("^eve\\.batch\\.partition\\.exchange$");
+                assertThat(perm.get("read").asText()).isEqualTo("^$");
+                batchManagerVerified = true;
+            } else if ("batch_worker_consumer".equals(user)) {
+                // Batch Worker holds read-only consumption rights on the partition requests queue
+                assertThat(perm.get("configure").asText()).isEqualTo("^$");
+                assertThat(perm.get("write").asText()).isEqualTo("^$");
+                assertThat(perm.get("read").asText()).isEqualTo("^eve\\.batch\\.partition\\.requests$");
+                batchWorkerVerified = true;
             }
         }
 
         assertThat(pollerVerified).withFailMessage("poller_producer permissions not found on /eve_market").isTrue();
         assertThat(workerVerified).withFailMessage("worker_consumer permissions not found on /eve_market").isTrue();
-        assertThat(batchVerified).withFailMessage("batch_broker permissions not found on /eve_market").isTrue();
+        assertThat(batchManagerVerified).withFailMessage("batch_manager_producer permissions not found on /eve_market").isTrue();
+        assertThat(batchWorkerVerified).withFailMessage("batch_worker_consumer permissions not found on /eve_market").isTrue();
 
         // 4. Exchanges & Dead-Letter Exchanges
         JsonNode exchangesNode = root.get("exchanges");

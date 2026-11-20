@@ -51,23 +51,32 @@ class LiquibaseSecurityChangelogTest {
     void securityChangelog_shouldEnforceLeastPrivilegeInvariants() throws Exception {
         String sql = Files.readString(resolvePath(SECURITY_CHANGELOG));
 
-        // Roles declaration
+        // Roles & isolated liquibase schema declaration
         assertThat(sql).contains("CREATE ROLE liquibase_ddl");
         assertThat(sql).contains("CREATE ROLE worker_dml");
+        assertThat(sql).contains("CREATE ROLE batch_dml");
         assertThat(sql).contains("CREATE ROLE powerbi_reader");
+        assertThat(sql).contains("CREATE SCHEMA IF NOT EXISTS liquibase");
 
-        // Public create revocation
+        // Public schema lockdown & liquibase schema isolation
+        assertThat(sql).contains("REVOKE ALL ON SCHEMA public FROM PUBLIC");
         assertThat(sql).contains("REVOKE CREATE ON SCHEMA staging FROM PUBLIC");
+        assertThat(sql).contains("REVOKE ALL ON SCHEMA liquibase FROM PUBLIC, worker_dml, batch_dml, powerbi_reader");
 
         // liquibase_ddl migration admin
-        assertThat(sql).contains("GRANT USAGE, CREATE ON SCHEMA staging TO liquibase_ddl");
-        assertThat(sql).contains("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA staging TO liquibase_ddl");
+        assertThat(sql).contains("GRANT USAGE, CREATE ON SCHEMA liquibase, staging TO liquibase_ddl");
+        assertThat(sql).contains("GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA liquibase, staging TO liquibase_ddl");
 
         // worker_dml operational boundaries
         assertThat(sql).contains("GRANT USAGE ON SCHEMA staging TO worker_dml");
         assertThat(sql).contains("GRANT SELECT, INSERT, UPDATE ON TABLE staging.market_orders TO worker_dml");
         assertThat(sql).contains("REVOKE DELETE, TRUNCATE ON TABLE staging.market_orders FROM worker_dml");
         assertThat(sql).contains("REVOKE CREATE ON SCHEMA staging FROM worker_dml");
+
+        // batch_dml read-only on staging
+        assertThat(sql).contains("GRANT USAGE ON SCHEMA staging TO batch_dml");
+        assertThat(sql).contains("GRANT SELECT ON TABLE staging.market_orders TO batch_dml");
+        assertThat(sql).contains("REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE staging.market_orders FROM batch_dml");
 
         // powerbi_reader isolation
         assertThat(sql).contains("REVOKE ALL ON SCHEMA staging FROM powerbi_reader");

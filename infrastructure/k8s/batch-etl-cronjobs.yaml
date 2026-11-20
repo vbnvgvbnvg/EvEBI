@@ -53,12 +53,14 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-username
+                      key: batch-username
                 - name: SPRING_DATASOURCE_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-password
+                      key: batch-password
+                - name: SPRING_LIQUIBASE_LIQUIBASE_SCHEMA
+                  value: "liquibase"
                 - name: SPRING_LIQUIBASE_USER
                   valueFrom:
                     secretKeyRef:
@@ -81,12 +83,12 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-username
+                      key: batch-manager-username
                 - name: SPRING_RABBITMQ_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-password
+                      key: batch-manager-password
               resources:
                 requests:
                   cpu: "500m"
@@ -152,12 +154,14 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-username
+                      key: batch-username
                 - name: SPRING_DATASOURCE_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-password
+                      key: batch-password
+                - name: SPRING_LIQUIBASE_LIQUIBASE_SCHEMA
+                  value: "liquibase"
                 - name: SPRING_LIQUIBASE_USER
                   valueFrom:
                     secretKeyRef:
@@ -180,12 +184,12 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-username
+                      key: batch-manager-username
                 - name: SPRING_RABBITMQ_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-password
+                      key: batch-manager-password
               resources:
                 requests:
                   cpu: "500m"
@@ -251,12 +255,14 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-username
+                      key: batch-username
                 - name: SPRING_DATASOURCE_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-db-credentials
-                      key: worker-password
+                      key: batch-password
+                - name: SPRING_LIQUIBASE_LIQUIBASE_SCHEMA
+                  value: "liquibase"
                 - name: SPRING_LIQUIBASE_USER
                   valueFrom:
                     secretKeyRef:
@@ -279,12 +285,12 @@ spec:
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-username
+                      key: batch-manager-username
                 - name: SPRING_RABBITMQ_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: eve-rabbitmq-credentials
-                      key: batch-password
+                      key: batch-manager-password
               resources:
                 requests:
                   cpu: "500m"

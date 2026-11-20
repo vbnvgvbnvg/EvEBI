@@ -117,11 +117,12 @@
   - Never commit real passwords, API tokens, or private keys to version control.
   - All database passwords, broker credentials, and secret tokens MUST be externalized via environment variables. Fallback defaults in `application.yml` are permitted ONLY for local in-memory/Docker development (`${ENV_VAR:local_dev_default}`) and MUST never contain production secrets.
 - **Principle of Least Privilege (PoLP):**
-  - **Database Access:** The pipeline must not operate under a single superuser account. Access must be partitioned by role:
-    - `worker_dml`: Permitted only operational data manipulation (`SELECT`, `INSERT`, `UPDATE`) on active staging tables. Explicitly denied DDL and table drop privileges.
-    - `liquibase_ddl`: Dedicated migration role permitted schema management during application startup and migrations.
-    - `powerbi_reader`: Strictly read-only role granted `SELECT` permissions exclusively on analytical star-schema views and tables (`dim_*`, `fact_*`). Denied access to internal staging tables and write operations.
-  - **Message Broker Scopes:** Producers (`ingestion-poller`) must hold write-only publication rights on exchanges. Consumers (`worker-service`) must hold read-only consumption rights on their specific queues.
+  - **Database Access:** The pipeline must not operate under a single superuser account. Access must be partitioned by role, with the default `public` schema locked down and Liquibase tracking tables isolated in the `liquibase` schema:
+    - `worker_dml`: Permitted only operational data manipulation (`SELECT`, `INSERT`, `UPDATE`) on active `staging` tables. Explicitly denied DDL, table drop privileges, and access to `analytics` or `batch` schemas.
+    - `batch_dml`: Permitted read-only `SELECT` on `staging` tables and operational data manipulation across `analytics` and `batch` schemas. Explicitly denied staging writes and DDL privileges.
+    - `liquibase_ddl`: Dedicated migration role permitted schema management (`liquibase`, `staging`, `analytics`, `batch`) during application startup and migrations.
+    - `powerbi_reader`: Strictly read-only role granted `SELECT` permissions exclusively on analytical star-schema views and tables (`dim_*`, `fact_*`). Denied access to internal staging/batch tables, metadata tables, and write operations.
+  - **Message Broker Scopes:** Producers (`ingestion-poller` as `poller_producer`, `batch-etl` managers as `batch_manager_producer`) must hold write-only publication rights on their target exchanges. Consumers (`worker-service` as `worker_consumer`, `batch-etl` workers as `batch_worker_consumer`) must hold read-only consumption rights on their specific queues.
 - **Container Health Probes vs. Management Hardening:**
   - Container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`) must remain unauthenticated so container orchestrators (Kubernetes/Docker) can poll health status without credentials.
   - Sensitive Actuator endpoints (`/actuator/env`, `/actuator/metrics`, `/actuator/beans`, `/actuator/threaddump`) must never be exposed publicly. When enabled, they must be secured via Spring Security authentication or isolated to an internal management port.

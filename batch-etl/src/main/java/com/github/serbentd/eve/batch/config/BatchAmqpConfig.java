@@ -13,6 +13,7 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.batch.integration.partition.StepExecutionRequest;
@@ -155,8 +156,8 @@ public class BatchAmqpConfig {
      * batch worker accounts start cleanly when topology is pre-provisioned.
      */
     @Bean
-    public org.springframework.amqp.rabbit.core.RabbitAdmin batchRabbitAdmin(ConnectionFactory connectionFactory) {
-        org.springframework.amqp.rabbit.core.RabbitAdmin admin = new org.springframework.amqp.rabbit.core.RabbitAdmin(connectionFactory);
+    public RabbitAdmin batchRabbitAdmin(ConnectionFactory connectionFactory) {
+        RabbitAdmin admin = new RabbitAdmin(connectionFactory);
         admin.setIgnoreDeclarationExceptions(true);
         return admin;
     }

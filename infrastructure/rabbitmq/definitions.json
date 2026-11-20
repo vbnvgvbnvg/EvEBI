@@ -30,7 +30,13 @@
       "tags": []
     },
     {
-      "name": "batch_broker",
+      "name": "batch_manager_producer",
+      "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": []
+    },
+    {
+      "name": "batch_worker_consumer",
       "password_hash": "EjRWeHNyJc516TXC2jnH8SNVxx0MbV7spyrbuuhS6eKQehZz",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
       "tags": []
@@ -59,11 +65,18 @@
       "read": "^eve\\.market\\.orders\\.worker$"
     },
     {
-      "user": "batch_broker",
+      "user": "batch_manager_producer",
       "vhost": "/eve_market",
-      "configure": "^eve\\.batch\\.partition\\..*",
-      "write": "^eve\\.batch\\.partition\\..*",
-      "read": "^eve\\.batch\\.partition\\..*"
+      "configure": "^$",
+      "write": "^eve\\.batch\\.partition\\.exchange$",
+      "read": "^$"
+    },
+    {
+      "user": "batch_worker_consumer",
+      "vhost": "/eve_market",
+      "configure": "^$",
+      "write": "^$",
+      "read": "^eve\\.batch\\.partition\\.requests$"
     }
   ],
   "exchanges": [

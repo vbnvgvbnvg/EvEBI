@@ -24,6 +24,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 @DisplayName("RabbitMQ Configuration & Serialization Unit Tests")
@@ -194,6 +195,21 @@ class RabbitMqConfigTest {
         assertThat(result).isInstanceOf(List.class);
         List<?> list = (List<?>) result;
         assertThat(list).isEmpty();
+    }
+
+    @Test
+    void jsonMessageConverter_whenHeaderHasUntrustedPackage_shouldRejectDeserialization() {
+        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+
+        MessageProperties props = new MessageProperties();
+        props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
+        props.setHeader("__TypeId__", "java.net.URL");
+
+        Message message = new Message("\"http://localhost\"".getBytes(StandardCharsets.UTF_8), props);
+
+        assertThatThrownBy(() -> converter.fromMessage(message))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("not in the trusted packages");
     }
 
     @Test
