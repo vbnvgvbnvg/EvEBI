@@ -1,0 +1,12 @@
+spring:
+  rabbitmq:
+    port: ${RABBITMQ_AMQP_PORT:5671}
+    password: ${RABBITMQ_PASS}
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:true}
+
+eve:
+  security:
+    password: ${EVE_SECURITY_PASSWORD}
+    admin-api-keys: ${EVE_SECURITY_API_KEYS}
+    actuator-api-keys: ${EVE_SECURITY_ACTUATOR_API_KEYS}

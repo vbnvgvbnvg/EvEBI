@@ -107,9 +107,13 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
   - [x] **Management Endpoint & Batch API Security:**
     - [x] Configure Spring Security to protect sensitive Actuator endpoints while preserving unauthenticated access for container health probes (`/actuator/health/liveness` and `/actuator/health/readiness`).
     - [x] Secure operational batch REST triggers (`/api/v1/jobs/**`) using Spring Security (API key, mTLS, or role-based authorization) or isolate them to an internal cluster management network interface.
-  - [ ] **Supply Chain & Secrets Management:**
-    - [ ] Externalize all production secrets and enforce zero plain-text credential commits.
-    - [ ] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.
+  - [x] **Supply Chain & Secrets Management:**
+    - [x] Externalize all production secrets and enforce zero plain-text credential commits.
+    - [x] Integrate dependency vulnerability audits (OWASP Dependency-Check / Dependabot) in the build lifecycle.
+    - [x] Add multi-stage `Dockerfile`s and Kubernetes `Deployment` manifests for `ingestion-poller` and `worker-service`.
+  - [ ] **Platform & Dependency Modernization (Spring Boot 4.x Upgrade):**
+    - [ ] Upgrade Spring Boot (`3.2.4` → `4.x`) and remediate High/Critical CVEs surfaced by `-Psecurity-audit` (Tomcat, Netty, Spring Framework, Jackson, PostgreSQL driver, RabbitMQ AMQP client, Log4j).
+    - [ ] Migrate impacted integrations (Jackson 3, Spring Batch 6, QueryDSL / Hibernate 7, OpenAPI Generator bindings, and test slices) with full regression verification.
   - [ ] **Containerized Integration Testing & CI/CD:**
     - [ ] Configure optional Testcontainers profile for real-broker RabbitMQ (with auth/vhost) and true PostgreSQL integration tests (requiring Docker / OrbStack).
     - [ ] Set up CI/CD pipeline (GitHub Actions) with automated containerized service test execution and SonarCloud quality gates.

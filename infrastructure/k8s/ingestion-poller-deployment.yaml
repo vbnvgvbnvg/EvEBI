@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eve-ingestion-poller
+  labels:
+    app.kubernetes.io/name: eve-ingestion-poller
+    app.kubernetes.io/part-of: eve-bi
+    app.kubernetes.io/component: ingestion-poller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: eve-ingestion-poller
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: eve-ingestion-poller
+        app.kubernetes.io/part-of: eve-bi
+        app.kubernetes.io/component: ingestion-poller
+    spec:
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: poller
+          image: eve-bi/ingestion-poller:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+              name: http
+            - containerPort: 9081
+              name: management
+          env:
+            - name: MANAGEMENT_SERVER_PORT
+              value: "9081"
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+            - name: SPRING_RABBITMQ_HOST
+              value: rabbitmq.eve-system.svc.cluster.local
+            - name: SPRING_RABBITMQ_PORT
+              value: "5671"
+            - name: SPRING_RABBITMQ_VIRTUAL_HOST
+              value: "/eve_market"
+            - name: SPRING_RABBITMQ_SSL_ENABLED
+              value: "true"
+            - name: SPRING_RABBITMQ_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: eve-rabbitmq-credentials
+                  key: poller-username
+            - name: SPRING_RABBITMQ_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eve-rabbitmq-credentials
+                  key: poller-password
+            - name: EVE_SECURITY_USER
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: username
+            - name: EVE_SECURITY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: password
+            - name: EVE_SECURITY_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: admin-api-keys
+            - name: EVE_SECURITY_ACTUATOR_API_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: eve-security-credentials
+                  key: actuator-api-keys
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 9081
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 9081
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1Gi"

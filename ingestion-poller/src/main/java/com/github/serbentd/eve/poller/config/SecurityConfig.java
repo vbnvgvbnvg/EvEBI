@@ -2,9 +2,11 @@ package com.github.serbentd.eve.poller.config;
 
 import com.github.serbentd.eve.common.security.ApiKeyAuthenticator;
 import com.github.serbentd.eve.common.security.EveSecurityProperties;
+import com.github.serbentd.eve.common.security.ProductionSecretValidator;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -30,6 +32,7 @@ import org.springframework.web.server.WebFilter;
 @Configuration
 @EnableWebFluxSecurity
 @EnableConfigurationProperties(EveSecurityProperties.class)
+@Import(ProductionSecretValidator.class)
 public class SecurityConfig {
 
     @Bean

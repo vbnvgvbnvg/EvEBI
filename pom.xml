@@ -18,6 +18,9 @@
         <openapi-generator.version>7.4.0</openapi-generator.version>
         <sonar-maven-plugin.version>5.0.0.4389</sonar-maven-plugin.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <owasp-dependency-check.version>11.1.1</owasp-dependency-check.version>
+        <owasp.failBuildOnCVSS>7.0</owasp.failBuildOnCVSS>
         <sonar.organization>vbnvgvbnvg</sonar.organization>
         <sonar.projectKey>vbnvgvbnvg_EvEBI</sonar.projectKey>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -57,9 +60,55 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.13.0</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>${maven-enforcer-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.owasp</groupId>
+                    <artifactId>dependency-check-maven</artifactId>
+                    <version>${owasp-dependency-check.version}</version>
+                    <configuration>
+                        <failBuildOnCVSS>${owasp.failBuildOnCVSS}</failBuildOnCVSS>
+                        <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+                        <dataDirectory>${maven.multiModuleProjectDirectory}/.owasp-data</dataDirectory>
+                        <formats>
+                            <format>HTML</format>
+                            <format>JSON</format>
+                        </formats>
+                        <suppressionFiles>
+                            <suppressionFile>${maven.multiModuleProjectDirectory}/config/owasp-suppressions.xml</suppressionFile>
+                        </suppressionFiles>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-build-invariants</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9.0,)</version>
+                                </requireMavenVersion>
+                                <banDuplicatePomDependencyVersions/>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
                 <artifactId>sonar-maven-plugin</artifactId>
@@ -101,5 +150,29 @@
         <module>worker-service</module>
         <module>batch-etl</module>
     </modules>
+
+    <profiles>
+        <profile>
+            <id>security-audit</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <executions>
+                            <execution>
+                                <id>owasp-dependency-check</id>
+                                <phase>verify</phase>
+                                <inherited>false</inherited>
+                                <goals>
+                                    <goal>aggregate</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
 </project>

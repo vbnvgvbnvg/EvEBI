@@ -1,11 +1,13 @@
 package com.github.serbentd.eve.worker.config;
 
 import com.github.serbentd.eve.common.security.EveSecurityProperties;
+import com.github.serbentd.eve.common.security.ProductionSecretValidator;
 import com.github.serbentd.eve.common.security.ServletApiKeyAuthenticationFilter;
 import jakarta.servlet.DispatcherType;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -30,6 +32,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @Configuration
 @EnableWebSecurity
 @EnableConfigurationProperties(EveSecurityProperties.class)
+@Import(ProductionSecretValidator.class)
 public class SecurityConfig {
 
     @Bean

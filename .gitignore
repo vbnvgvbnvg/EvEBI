@@ -19,4 +19,18 @@ target/
 # Environment & Secrets
 .env
 *.env
+.env.*
 !.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.truststore
+infrastructure/k8s/*secret*.yaml
+infrastructure/k8s/*secret*.yml
+!infrastructure/k8s/secrets.example.yaml
+
+# OWASP Dependency-Check Local Cache
+.owasp-data/
