@@ -2,9 +2,9 @@ package com.github.serbentd.eve.batch.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.DefaultJobKeyGenerator;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.job.DefaultJobKeyGenerator;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -25,8 +25,8 @@ class BatchJobParametersFactoryTest {
         assertThat(parameters.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("batch-etl-pod-42");
         assertThat(parameters.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("k8s-worker-node-7");
 
-        assertThat(parameters.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(parameters.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(parameters.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(parameters.getParameter(BatchJobParametersFactory.POD_NODE_NAME_PARAM).identifying()).isFalse();
     }
 
     @Test
@@ -43,12 +43,12 @@ class BatchJobParametersFactoryTest {
         JobParameters parameters = factory.enrich(builder).toJobParameters();
 
         assertThat(parameters.getString("targetDate")).isEqualTo("2026-11-12");
-        assertThat(parameters.getParameters().get("targetDate").isIdentifying()).isTrue();
+        assertThat(parameters.getParameter("targetDate").identifying()).isTrue();
 
         assertThat(parameters.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("batch-etl-pod-99");
         assertThat(parameters.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("k8s-node-1");
-        assertThat(parameters.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(parameters.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(parameters.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(parameters.getParameter(BatchJobParametersFactory.POD_NODE_NAME_PARAM).identifying()).isFalse();
     }
 
     @Test
@@ -68,8 +68,8 @@ class BatchJobParametersFactoryTest {
         assertThat(enriched.getString("snapshotTime")).isEqualTo("2026-11-12T12:00:00Z");
         assertThat(enriched.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("pod-alpha");
         assertThat(enriched.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("node-beta");
-        assertThat(enriched.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(enriched.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
+        assertThat(enriched.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(enriched.getParameter(BatchJobParametersFactory.POD_NODE_NAME_PARAM).identifying()).isFalse();
     }
 
     @Test

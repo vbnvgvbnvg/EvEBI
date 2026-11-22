@@ -9,11 +9,11 @@ import com.github.serbentd.eve.batch.repository.SdeMetadataRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -21,7 +21,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:eve_sde_sync_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
+        "eve.batch.kubernetes.execution-mode=SDE_SYNC"
+})
 class SdeSyncJobIntegrationTest {
 
     /** Fixture IDs matching rows in {@code sde/items_test.csv} and {@code sde/stations_test.csv}. */
@@ -29,19 +32,19 @@ class SdeSyncJobIntegrationTest {
     private static final long GILA_TYPE_ID = 17715L;
     private static final long HEK_FACTORY_STATION_ID = 60005686L;
 
-    private final JobLauncher jobLauncher;
+    private final JobOperator jobOperator;
     private final Job sdeSyncJob;
     private final DimItemRepository dimItemRepository;
     private final DimStationRepository dimStationRepository;
     private final SdeMetadataRepository sdeMetadataRepository;
 
     SdeSyncJobIntegrationTest(
-            JobLauncher jobLauncher,
+            JobOperator jobOperator,
             @Qualifier(SdeSyncJobConfig.JOB_NAME) Job sdeSyncJob,
             DimItemRepository dimItemRepository,
             DimStationRepository dimStationRepository,
             SdeMetadataRepository sdeMetadataRepository) {
-        this.jobLauncher = jobLauncher;
+        this.jobOperator = jobOperator;
         this.sdeSyncJob = sdeSyncJob;
         this.dimItemRepository = dimItemRepository;
         this.dimStationRepository = dimStationRepository;
@@ -57,7 +60,7 @@ class SdeSyncJobIntegrationTest {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        JobExecution execution = jobLauncher.run(sdeSyncJob, params);
+        JobExecution execution = jobOperator.start(sdeSyncJob, params);
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
@@ -93,7 +96,7 @@ class SdeSyncJobIntegrationTest {
                 .addLong("run.id", System.currentTimeMillis() + 1)
                 .toJobParameters();
 
-        JobExecution rerunExecution = jobLauncher.run(sdeSyncJob, rerunParams);
+        JobExecution rerunExecution = jobOperator.start(sdeSyncJob, rerunParams);
         assertThat(rerunExecution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
     }
 }

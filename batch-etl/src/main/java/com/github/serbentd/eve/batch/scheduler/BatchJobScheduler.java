@@ -9,8 +9,8 @@ import com.github.serbentd.eve.batch.job.sde.SdeSyncJobConfig;
 import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -36,7 +36,7 @@ public class BatchJobScheduler {
     private static final LocalDate DEFAULT_SEED_START_DATE = LocalDate.of(2020, 1, 1);
     private static final LocalDate DEFAULT_SEED_END_DATE = LocalDate.of(2035, 12, 31);
 
-    private final JobLauncher asyncJobLauncher;
+    private final JobOperator jobOperator;
     private final Job sdeSyncJob;
     private final Job dailyMarketSummaryJob;
     private final Job orderBookLiquidityJob;
@@ -46,7 +46,7 @@ public class BatchJobScheduler {
     private final BatchJobParametersFactory jobParametersFactory;
 
     public BatchJobScheduler(
-            @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
+            JobOperator jobOperator,
             @Qualifier(SdeSyncJobConfig.JOB_NAME) Job sdeSyncJob,
             @Qualifier(DailyMarketSummaryJobConfig.JOB_NAME) Job dailyMarketSummaryJob,
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
@@ -54,7 +54,7 @@ public class BatchJobScheduler {
             DateDimensionService dateDimensionService,
             TimeDimensionService timeDimensionService,
             BatchJobParametersFactory jobParametersFactory) {
-        this.asyncJobLauncher = asyncJobLauncher;
+        this.jobOperator = jobOperator;
         this.sdeSyncJob = sdeSyncJob;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
         this.orderBookLiquidityJob = orderBookLiquidityJob;
@@ -90,7 +90,7 @@ public class BatchJobScheduler {
         LocalDate today = LocalDate.now(ZoneOffset.UTC);
         log.info("Executing scheduled SDE synchronization trigger for date: {}", today);
         try {
-            asyncJobLauncher.run(sdeSyncJob, jobParametersFactory.newBuilder()
+            jobOperator.start(sdeSyncJob, jobParametersFactory.newBuilder()
                     .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, today.toString())
                     .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
@@ -111,7 +111,7 @@ public class BatchJobScheduler {
         LocalDate yesterday = LocalDate.now(ZoneOffset.UTC).minusDays(1);
         log.info("Executing scheduled daily market summary trigger for date: {}", yesterday);
         try {
-            asyncJobLauncher.run(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
+            jobOperator.start(dailyMarketSummaryJob, jobParametersFactory.newBuilder()
                     .addString(DailyMarketSummaryJobConfig.TARGET_DATE_PARAM, yesterday.toString())
                     .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());
@@ -132,7 +132,7 @@ public class BatchJobScheduler {
         Instant snapshotTime = Instant.now().truncatedTo(ChronoUnit.MINUTES);
         log.info("Executing scheduled order book liquidity trigger for timestamp: {}", snapshotTime);
         try {
-            asyncJobLauncher.run(orderBookLiquidityJob, jobParametersFactory.newBuilder()
+            jobOperator.start(orderBookLiquidityJob, jobParametersFactory.newBuilder()
                     .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, snapshotTime.toString())
                     .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis(), false)
                     .toJobParameters());

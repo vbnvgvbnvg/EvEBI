@@ -12,7 +12,6 @@ public abstract class StepExecutionRequestMixin {
     @JsonCreator
     public StepExecutionRequestMixin(
             @JsonProperty("stepName") String stepName,
-            @JsonProperty("jobExecutionId") Long jobExecutionId,
-            @JsonProperty("stepExecutionId") Long stepExecutionId) {
+            @JsonProperty("stepExecutionId") long stepExecutionId) {
     }
 }

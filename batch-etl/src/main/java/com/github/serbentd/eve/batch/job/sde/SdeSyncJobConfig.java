@@ -7,11 +7,11 @@ import com.github.serbentd.eve.batch.dto.SdeItemDto;
 import com.github.serbentd.eve.batch.dto.SdeStationDto;
 import com.github.serbentd.eve.batch.reaper.AdvisoryLockJobExecutionListener;
 import com.github.serbentd.eve.batch.service.SdeDownloadService;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,7 +20,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * Spring Batch 5 configuration for {@code sdeSyncJob}.
+ * Spring Batch 6 configuration for {@code sdeSyncJob}.
  * Orchestrates conditional streaming synchronization of EVE Static Data Export (SDE)
  * reference dimensions (items and stations) with high-throughput atomic batch upserts.
  */
@@ -82,7 +82,8 @@ public class SdeSyncJobConfig {
             BatchProperties batchProperties) {
 
         return new StepBuilder(ITEM_STEP_NAME, jobRepository)
-                .<SdeItemDto, DimItemEntity>chunk(batchProperties.sde().chunkSize(), transactionManager)
+                .<SdeItemDto, DimItemEntity>chunk(batchProperties.sde().chunkSize())
+                .transactionManager(transactionManager)
                 .reader(sdeItemReader)
                 .processor(processor)
                 .writer(writer)
@@ -100,7 +101,8 @@ public class SdeSyncJobConfig {
             BatchProperties batchProperties) {
 
         return new StepBuilder(STATION_STEP_NAME, jobRepository)
-                .<SdeStationDto, DimStationEntity>chunk(batchProperties.sde().chunkSize(), transactionManager)
+                .<SdeStationDto, DimStationEntity>chunk(batchProperties.sde().chunkSize())
+                .transactionManager(transactionManager)
                 .reader(sdeStationReader)
                 .processor(processor)
                 .writer(writer)

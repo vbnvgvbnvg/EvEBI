@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Spring Batch 6 renamed BATCH_JOB_SEQ to BATCH_JOB_INSTANCE_SEQ -->
+    <changeSet id="batch_metadata-008-rename-job-instance-seq-pg" author="serbentd" dbms="postgresql">
+        <comment>Rename BATCH_JOB_SEQ to BATCH_JOB_INSTANCE_SEQ for Spring Batch 6 (preserves sequence state and grants)</comment>
+        <sql>ALTER SEQUENCE batch.BATCH_JOB_SEQ RENAME TO BATCH_JOB_INSTANCE_SEQ;</sql>
+    </changeSet>
+
+    <changeSet id="batch_metadata-008-rename-job-instance-seq-h2" author="serbentd" dbms="h2">
+        <comment>Replace BATCH_JOB_SEQ with BATCH_JOB_INSTANCE_SEQ for Spring Batch 6 on H2 in-memory test database</comment>
+        <createSequence sequenceName="BATCH_JOB_INSTANCE_SEQ" schemaName="batch" maxValue="9223372036854775807" cycle="false"/>
+        <dropSequence sequenceName="BATCH_JOB_SEQ" schemaName="batch"/>
+    </changeSet>
+
+</databaseChangeLog>

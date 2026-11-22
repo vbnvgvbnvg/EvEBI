@@ -11,11 +11,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -28,7 +28,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:eve_daily_summary_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
+        "eve.batch.kubernetes.execution-mode=DAILY_MARKET_SUMMARY"
+})
 class DailyMarketSummaryJobIntegrationTest {
 
     private static final Long THE_FORGE_REGION_ID = 10000002L;
@@ -38,7 +41,7 @@ class DailyMarketSummaryJobIntegrationTest {
     private static final LocalDate TARGET_DATE = LocalDate.of(2026, 10, 10);
     private static final Integer EXPECTED_DATE_ID = 20261010;
 
-    private final JobLauncher jobLauncher;
+    private final JobOperator jobOperator;
     private final Job dailyMarketSummaryJob;
     private final StagingMarketOrderRepository stagingRepository;
     private final FactMarketDailySummaryRepository factRepository;
@@ -46,13 +49,13 @@ class DailyMarketSummaryJobIntegrationTest {
     private final DimDateRepository dimDateRepository;
 
     DailyMarketSummaryJobIntegrationTest(
-            JobLauncher jobLauncher,
+            JobOperator jobOperator,
             @Qualifier(DailyMarketSummaryJobConfig.JOB_NAME) Job dailyMarketSummaryJob,
             StagingMarketOrderRepository stagingRepository,
             FactMarketDailySummaryRepository factRepository,
             DateDimensionService dateDimensionService,
             DimDateRepository dimDateRepository) {
-        this.jobLauncher = jobLauncher;
+        this.jobOperator = jobOperator;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
         this.stagingRepository = stagingRepository;
         this.factRepository = factRepository;
@@ -95,7 +98,7 @@ class DailyMarketSummaryJobIntegrationTest {
                 .toJobParameters();
 
         // Act
-        JobExecution execution = jobLauncher.run(dailyMarketSummaryJob, params);
+        JobExecution execution = jobOperator.start(dailyMarketSummaryJob, params);
 
         // Assert
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
@@ -138,7 +141,7 @@ class DailyMarketSummaryJobIntegrationTest {
                 .addLong("run.id", 1L)
                 .toJobParameters();
 
-        JobExecution run1 = jobLauncher.run(dailyMarketSummaryJob, params1);
+        JobExecution run1 = jobOperator.start(dailyMarketSummaryJob, params1);
         assertThat(run1.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         // Re-run with updated order volume
@@ -150,7 +153,7 @@ class DailyMarketSummaryJobIntegrationTest {
                 .addLong("run.id", 2L)
                 .toJobParameters();
 
-        JobExecution run2 = jobLauncher.run(dailyMarketSummaryJob, params2);
+        JobExecution run2 = jobOperator.start(dailyMarketSummaryJob, params2);
         assertThat(run2.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         // Assert: Exactly 1 record exists with updated volume

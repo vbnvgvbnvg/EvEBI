@@ -20,12 +20,12 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.JobParametersInvalidException;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.integration.partition.StepExecutionRequest;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -51,7 +51,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "eve.batch.remote-partitioning.amqp-flows-enabled=false",
         "eve.batch.remote-partitioning.poll-interval=50ms",
         "eve.batch.remote-partitioning.timeout=10s",
-        "eve.batch.remote-partitioning.heavy-region-slices.10000002=2"
+        "eve.batch.remote-partitioning.heavy-region-slices.10000002=2",
+        "eve.batch.kubernetes.execution-mode=DAILY_MARKET_SUMMARY"
 })
 @Import(RemotePartitioningIntegrationTest.PartitionTestBridgeConfig.class)
 class RemotePartitioningIntegrationTest {
@@ -70,7 +71,7 @@ class RemotePartitioningIntegrationTest {
     private static final LocalDate TARGET_DATE = LocalDate.of(2026, 11, 1);
     private static final String SNAPSHOT_TIME_STR = "2026-11-01T12:00:00Z";
 
-    private final JobLauncher jobLauncher;
+    private final JobOperator jobOperator;
     private final Job dailyMarketSummaryJob;
     private final Job orderBookLiquidityJob;
     private final StagingMarketOrderRepository stagingRepository;
@@ -81,7 +82,7 @@ class RemotePartitioningIntegrationTest {
     private final DimStationRepository dimStationRepository;
 
     RemotePartitioningIntegrationTest(
-            JobLauncher jobLauncher,
+            JobOperator jobOperator,
             @Qualifier(DailyMarketSummaryJobConfig.JOB_NAME) Job dailyMarketSummaryJob,
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
             StagingMarketOrderRepository stagingRepository,
@@ -91,7 +92,7 @@ class RemotePartitioningIntegrationTest {
             DimTimeRepository dimTimeRepository,
             DimStationRepository dimStationRepository) {
 
-        this.jobLauncher = jobLauncher;
+        this.jobOperator = jobOperator;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
         this.orderBookLiquidityJob = orderBookLiquidityJob;
         this.stagingRepository = stagingRepository;
@@ -148,7 +149,7 @@ class RemotePartitioningIntegrationTest {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        JobExecution execution = jobLauncher.run(dailyMarketSummaryJob, params);
+        JobExecution execution = jobOperator.start(dailyMarketSummaryJob, params);
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
@@ -208,7 +209,7 @@ class RemotePartitioningIntegrationTest {
                 .addLong("run.id", System.currentTimeMillis())
                 .toJobParameters();
 
-        JobExecution execution = jobLauncher.run(orderBookLiquidityJob, params);
+        JobExecution execution = jobOperator.start(orderBookLiquidityJob, params);
 
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
@@ -245,33 +246,33 @@ class RemotePartitioningIntegrationTest {
 
     @Test
     @DisplayName("Should reject job execution when required temporal job parameters are missing or malformed")
-    void jobs_whenTemporalParametersMissingOrMalformed_shouldThrowJobParametersInvalidException() {
+    void jobs_whenTemporalParametersMissingOrMalformed_shouldThrowInvalidJobParametersException() {
         JobParameters missingParams = new JobParametersBuilder()
                 .addLong("run.id", 1L)
                 .toJobParameters();
 
-        assertThatThrownBy(() -> jobLauncher.run(dailyMarketSummaryJob, missingParams))
-                .isInstanceOf(JobParametersInvalidException.class)
+        assertThatThrownBy(() -> jobOperator.start(dailyMarketSummaryJob, missingParams))
+                .isInstanceOf(InvalidJobParametersException.class)
                 .hasMessageContaining("targetDate");
 
-        assertThatThrownBy(() -> jobLauncher.run(orderBookLiquidityJob, missingParams))
-                .isInstanceOf(JobParametersInvalidException.class)
+        assertThatThrownBy(() -> jobOperator.start(orderBookLiquidityJob, missingParams))
+                .isInstanceOf(InvalidJobParametersException.class)
                 .hasMessageContaining("snapshotTime");
 
         JobParameters malformedDailyParams = new JobParametersBuilder()
                 .addString("targetDate", "not-a-date")
                 .toJobParameters();
 
-        assertThatThrownBy(() -> jobLauncher.run(dailyMarketSummaryJob, malformedDailyParams))
-                .isInstanceOf(JobParametersInvalidException.class)
+        assertThatThrownBy(() -> jobOperator.start(dailyMarketSummaryJob, malformedDailyParams))
+                .isInstanceOf(InvalidJobParametersException.class)
                 .hasMessageContaining("ISO-8601 LocalDate");
 
         JobParameters malformedLiquidityParams = new JobParametersBuilder()
                 .addString("snapshotTime", "not-an-instant")
                 .toJobParameters();
 
-        assertThatThrownBy(() -> jobLauncher.run(orderBookLiquidityJob, malformedLiquidityParams))
-                .isInstanceOf(JobParametersInvalidException.class)
+        assertThatThrownBy(() -> jobOperator.start(orderBookLiquidityJob, malformedLiquidityParams))
+                .isInstanceOf(InvalidJobParametersException.class)
                 .hasMessageContaining("ISO-8601 Instant");
     }
 

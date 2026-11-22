@@ -2,12 +2,12 @@
 
 ## Technology Stack
 - **Language & Runtime:** Java 21 (LTS)
-- **Framework:** Spring Boot 3.2.x (Spring 6, Jakarta EE namespace)
+- **Framework:** Spring Boot 4.2.x (Spring Framework 7, Jakarta EE 11, Jackson 3, Spring Batch 6)
 - **Build System:** Apache Maven (Multi-Module with Maven Wrapper)
-- **Database & Migration:** PostgreSQL, Liquibase, QueryDSL 5.x
-- **Messaging:** RabbitMQ (Spring AMQP)
+- **Database & Migration:** PostgreSQL, Liquibase, Hibernate 7, OpenFeign QueryDSL 7.x
+- **Messaging:** RabbitMQ (Spring AMQP 4 / `spring-boot-starter-rabbitmq`)
 - **API Client:** Spring WebFlux (`WebClient`), OpenAPI Generator 7.x
-- **Resilience:** Resilience4j (Rate limiting, Circuit breaking, Retry)
+- **Resilience:** Resilience4j 2.4.x (`resilience4j-spring-boot4`, Rate limiting, Circuit breaking, Retry)
 
 ## Cross-Platform Safeguards
 - This is a cross-platform project developed across macOS and Windows 11.

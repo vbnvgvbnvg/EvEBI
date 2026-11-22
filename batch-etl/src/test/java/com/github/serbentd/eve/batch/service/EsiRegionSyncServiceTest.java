@@ -1,6 +1,6 @@
 package com.github.serbentd.eve.batch.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.github.serbentd.eve.batch.config.BatchExecutionMode;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.config.PartitionRole;
@@ -49,7 +49,7 @@ class EsiRegionSyncServiceTest {
     private final DataSource dataSource;
     private final HttpClient httpClient;
     private final ResourceLoader resourceLoader;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
     private final SdeDownloadService sdeDownloadService;
 
     EsiRegionSyncServiceTest(
@@ -59,7 +59,7 @@ class EsiRegionSyncServiceTest {
             DataSource dataSource,
             @Qualifier("esiHttpClient") HttpClient httpClient,
             ResourceLoader resourceLoader,
-            ObjectMapper objectMapper,
+            JsonMapper jsonMapper,
             SdeDownloadService sdeDownloadService) {
         this.esiRegionSyncService = esiRegionSyncService;
         this.dimRegionRepository = dimRegionRepository;
@@ -67,7 +67,7 @@ class EsiRegionSyncServiceTest {
         this.dataSource = dataSource;
         this.httpClient = httpClient;
         this.resourceLoader = resourceLoader;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.sdeDownloadService = sdeDownloadService;
     }
 
@@ -138,7 +138,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -169,7 +169,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -202,7 +202,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -245,7 +245,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -266,7 +266,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 httpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -295,7 +295,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 
@@ -337,7 +337,7 @@ class EsiRegionSyncServiceTest {
                 dataSource,
                 mockHttpClient,
                 resourceLoader,
-                objectMapper,
+                jsonMapper,
                 sdeDownloadService
         );
 

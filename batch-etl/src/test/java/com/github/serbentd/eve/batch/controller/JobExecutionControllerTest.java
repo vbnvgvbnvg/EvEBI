@@ -1,6 +1,5 @@
 package com.github.serbentd.eve.batch.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.serbentd.eve.batch.config.BatchJobParametersFactory;
 import com.github.serbentd.eve.batch.dto.JobLaunchResponseDto;
 import com.github.serbentd.eve.batch.job.daily.DailyMarketSummaryJobConfig;
@@ -12,15 +11,19 @@ import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.util.Set;
 
@@ -50,27 +53,33 @@ class JobExecutionControllerTest {
     private static final String API_KEY_VALUE = "test-api-key";
 
     private final MockMvc mockMvc;
-    private final JobExplorer jobExplorer;
-    private final ObjectMapper objectMapper;
+    private final JobRepository jobRepository;
+    private final JsonMapper jsonMapper;
 
-    JobExecutionControllerTest(MockMvc mockMvc, JobExplorer jobExplorer, ObjectMapper objectMapper) {
+    JobExecutionControllerTest(MockMvc mockMvc, JobRepository jobRepository, JsonMapper jsonMapper) {
         this.mockMvc = mockMvc;
-        this.jobExplorer = jobExplorer;
-        this.objectMapper = objectMapper;
+        this.jobRepository = jobRepository;
+        this.jsonMapper = jsonMapper;
     }
 
     @AfterEach
     void awaitRunningJobs() throws Exception {
         long deadline = System.currentTimeMillis() + 5000;
+        Set<JobExecution> runningSde = Set.of();
+        Set<JobExecution> runningDaily = Set.of();
+        Set<JobExecution> runningLiq = Set.of();
         while (System.currentTimeMillis() < deadline) {
-            Set<JobExecution> runningSde = jobExplorer.findRunningJobExecutions(SdeSyncJobConfig.JOB_NAME);
-            Set<JobExecution> runningDaily = jobExplorer.findRunningJobExecutions(DailyMarketSummaryJobConfig.JOB_NAME);
-            Set<JobExecution> runningLiq = jobExplorer.findRunningJobExecutions(OrderBookLiquidityJobConfig.JOB_NAME);
+            runningSde = jobRepository.findRunningJobExecutions(SdeSyncJobConfig.JOB_NAME);
+            runningDaily = jobRepository.findRunningJobExecutions(DailyMarketSummaryJobConfig.JOB_NAME);
+            runningLiq = jobRepository.findRunningJobExecutions(OrderBookLiquidityJobConfig.JOB_NAME);
             if (runningSde.isEmpty() && runningDaily.isEmpty() && runningLiq.isEmpty()) {
-                break;
+                return;
             }
             Thread.sleep(25);
         }
+        assertThat(runningSde).as("Running SDE sync executions should drain after test").isEmpty();
+        assertThat(runningDaily).as("Running daily summary executions should drain after test").isEmpty();
+        assertThat(runningLiq).as("Running liquidity executions should drain after test").isEmpty();
     }
 
     @Test
@@ -171,7 +180,7 @@ class JobExecutionControllerTest {
                 .andReturn();
 
         String responseContent = launchResult.getResponse().getContentAsString();
-        JobLaunchResponseDto launchDto = objectMapper.readValue(responseContent, JobLaunchResponseDto.class);
+        JobLaunchResponseDto launchDto = jsonMapper.readValue(responseContent, JobLaunchResponseDto.class);
         long executionId = launchDto.jobExecutionId();
         assertThat(executionId).isPositive();
 
@@ -211,13 +220,13 @@ class JobExecutionControllerTest {
     }
 
     @Test
-    @DisplayName("Controller should return 500 when job launcher fails")
-    void controller_whenLauncherThrows_shouldReturn500() throws Exception {
-        JobLauncher failingLauncher = mock(JobLauncher.class);
-        when(failingLauncher.run(any(), any()))
+    @DisplayName("Controller should return 500 when job operator fails")
+    void controller_whenOperatorThrows_shouldReturn500() throws Exception {
+        JobOperator failingOperator = mock(JobOperator.class);
+        when(failingOperator.start(any(Job.class), any(JobParameters.class)))
                 .thenThrow(new RuntimeException("Simulated launch failure"));
 
-        JobExplorer jobExplorer = mock(JobExplorer.class);
+        JobRepository mockJobRepository = mock(JobRepository.class);
         Job job = mock(Job.class);
         when(job.getName()).thenReturn("testJob");
         EsiRegionSyncService esiRegionSyncService = mock(EsiRegionSyncService.class);
@@ -227,7 +236,7 @@ class JobExecutionControllerTest {
         TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
 
         JobExecutionController controller = new JobExecutionController(
-                failingLauncher, jobExplorer, job, job, job,
+                failingOperator, mockJobRepository, job, job, job,
                 esiRegionSyncService, dateDimensionService, timeDimensionService,
                 createTestJobParametersFactory()
         );
@@ -246,8 +255,8 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("Should reject job triggers with HTTP 409 Conflict when job is already executing")
     void triggerJobs_whenAlreadyRunning_shouldThrowConflict() {
-        JobLauncher launcher = mock(JobLauncher.class);
-        JobExplorer explorer = mock(JobExplorer.class);
+        JobOperator operator = mock(JobOperator.class);
+        JobRepository mockJobRepository = mock(JobRepository.class);
         Job sdeJob = mock(Job.class);
         when(sdeJob.getName()).thenReturn(SdeSyncJobConfig.JOB_NAME);
         Job dailyJob = mock(Job.class);
@@ -255,19 +264,19 @@ class JobExecutionControllerTest {
         Job liquidityJob = mock(Job.class);
         when(liquidityJob.getName()).thenReturn(OrderBookLiquidityJobConfig.JOB_NAME);
 
-        when(explorer.findRunningJobExecutions(SdeSyncJobConfig.JOB_NAME))
-                .thenReturn(Set.of(new JobExecution(101L)));
-        when(explorer.findRunningJobExecutions(DailyMarketSummaryJobConfig.JOB_NAME))
-                .thenReturn(Set.of(new JobExecution(102L)));
-        when(explorer.findRunningJobExecutions(OrderBookLiquidityJobConfig.JOB_NAME))
-                .thenReturn(Set.of(new JobExecution(103L)));
+        when(mockJobRepository.findRunningJobExecutions(SdeSyncJobConfig.JOB_NAME))
+                .thenReturn(Set.of(new JobExecution(101L, new JobInstance(1L, SdeSyncJobConfig.JOB_NAME), new JobParameters())));
+        when(mockJobRepository.findRunningJobExecutions(DailyMarketSummaryJobConfig.JOB_NAME))
+                .thenReturn(Set.of(new JobExecution(102L, new JobInstance(2L, DailyMarketSummaryJobConfig.JOB_NAME), new JobParameters())));
+        when(mockJobRepository.findRunningJobExecutions(OrderBookLiquidityJobConfig.JOB_NAME))
+                .thenReturn(Set.of(new JobExecution(103L, new JobInstance(3L, OrderBookLiquidityJobConfig.JOB_NAME), new JobParameters())));
 
         EsiRegionSyncService esiRegionSyncService = mock(EsiRegionSyncService.class);
         when(esiRegionSyncService.syncRegions())
                 .thenThrow(new IllegalStateException("ESI region synchronization is already in progress"));
 
         JobExecutionController controller = new JobExecutionController(
-                launcher, explorer, sdeJob, dailyJob, liquidityJob,
+                operator, mockJobRepository, sdeJob, dailyJob, liquidityJob,
                 esiRegionSyncService, mock(DateDimensionService.class), mock(TimeDimensionService.class),
                 createTestJobParametersFactory()
         );
@@ -296,16 +305,16 @@ class JobExecutionControllerTest {
     @Test
     @DisplayName("Should map JobExecutionAlreadyRunningException to HTTP 409 Conflict")
     void triggerJobs_whenAlreadyRunningException_shouldThrowConflict() throws Exception {
-        JobLauncher launcher = mock(JobLauncher.class);
-        when(launcher.run(any(), any()))
-                .thenThrow(new org.springframework.batch.core.repository.JobExecutionAlreadyRunningException("Already running"));
+        JobOperator operator = mock(JobOperator.class);
+        when(operator.start(any(Job.class), any(JobParameters.class)))
+                .thenThrow(new JobExecutionAlreadyRunningException("Already running"));
 
-        JobExplorer explorer = mock(JobExplorer.class);
+        JobRepository mockJobRepository = mock(JobRepository.class);
         Job job = mock(Job.class);
         when(job.getName()).thenReturn("testJob");
 
         JobExecutionController controller = new JobExecutionController(
-                launcher, explorer, job, job, job,
+                operator, mockJobRepository, job, job, job,
                 mock(EsiRegionSyncService.class), mock(DateDimensionService.class), mock(TimeDimensionService.class),
                 createTestJobParametersFactory()
         );

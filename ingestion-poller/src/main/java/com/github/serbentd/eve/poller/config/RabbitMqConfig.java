@@ -1,16 +1,14 @@
 package com.github.serbentd.eve.poller.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Spring AMQP configuration for market order message publication.
@@ -32,15 +30,12 @@ public class RabbitMqConfig {
     /**
      * JSON message converter supporting Java records and ISO-8601 {@code OffsetDateTime} formatting.
      *
-     * @param objectMapper auto-configured Spring Jackson object mapper
-     * @return configured Jackson2JsonMessageConverter
+     * @param jsonMapper auto-configured Spring Jackson 3 JSON mapper
+     * @return configured JacksonJsonMessageConverter
      */
     @Bean
-    public MessageConverter jsonMessageConverter(ObjectMapper objectMapper) {
-        ObjectMapper mapper = objectMapper.copy()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        return new Jackson2JsonMessageConverter(mapper);
+    public MessageConverter jsonMessageConverter(JsonMapper jsonMapper) {
+        return new JacksonJsonMessageConverter(jsonMapper);
     }
 
     /**

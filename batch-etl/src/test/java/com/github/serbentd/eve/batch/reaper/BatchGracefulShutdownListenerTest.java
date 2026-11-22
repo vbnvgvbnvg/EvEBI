@@ -6,17 +6,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SpringBootTest
 class BatchGracefulShutdownListenerTest {
@@ -25,19 +27,16 @@ class BatchGracefulShutdownListenerTest {
     private final AdvisoryLockManager advisoryLockManager;
     private final AdvisoryLockJobExecutionListener advisoryLockListener;
     private final JobRepository jobRepository;
-    private final JobExplorer jobExplorer;
 
     BatchGracefulShutdownListenerTest(
             BatchGracefulShutdownListener shutdownListener,
             AdvisoryLockManager advisoryLockManager,
             AdvisoryLockJobExecutionListener advisoryLockListener,
-            JobRepository jobRepository,
-            JobExplorer jobExplorer) {
+            JobRepository jobRepository) {
         this.shutdownListener = shutdownListener;
         this.advisoryLockManager = advisoryLockManager;
         this.advisoryLockListener = advisoryLockListener;
         this.jobRepository = jobRepository;
-        this.jobExplorer = jobExplorer;
     }
 
     @BeforeEach
@@ -75,9 +74,9 @@ class BatchGracefulShutdownListenerTest {
         execution.setStatus(BatchStatus.STARTED);
         jobRepository.update(execution);
 
-        StepExecution stepExecution = execution.createStepExecution("testStep");
+        StepExecution stepExecution = jobRepository.createStepExecution("testStep", execution);
         stepExecution.setStatus(BatchStatus.STARTED);
-        jobRepository.add(stepExecution);
+        jobRepository.update(stepExecution);
 
         // Lock is held locally by this container instance and registered as active
         advisoryLockListener.beforeJob(execution);
@@ -89,9 +88,9 @@ class BatchGracefulShutdownListenerTest {
         // Assert
         assertThat(stoppedCount).isGreaterThanOrEqualTo(1);
 
-        JobExecution updated = jobExplorer.getJobExecution(execution.getId());
+        JobExecution updated = jobRepository.getJobExecution(execution.getId());
         assertThat(updated).isNotNull();
-        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPING);
+        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPED);
 
         // The in-memory step execution has terminate-only and STOPPING status set to interrupt active chunk loops
         assertThat(stepExecution.isTerminateOnly()).isTrue();
@@ -112,9 +111,9 @@ class BatchGracefulShutdownListenerTest {
         execution.setStatus(BatchStatus.STARTED);
         jobRepository.update(execution);
 
-        StepExecution stepExecution = execution.createStepExecution("fallbackStep");
+        StepExecution stepExecution = jobRepository.createStepExecution("fallbackStep", execution);
         stepExecution.setStatus(BatchStatus.STARTED);
-        jobRepository.add(stepExecution);
+        jobRepository.update(stepExecution);
 
         // Lock acquired directly without registering in-memory execution
         boolean locked = advisoryLockManager.tryLock(execution.getId());
@@ -123,9 +122,9 @@ class BatchGracefulShutdownListenerTest {
         int stoppedCount = shutdownListener.stopLocallyOwnedExecutions();
         assertThat(stoppedCount).isGreaterThanOrEqualTo(1);
 
-        JobExecution updated = jobExplorer.getJobExecution(execution.getId());
+        JobExecution updated = jobRepository.getJobExecution(execution.getId());
         assertThat(updated).isNotNull();
-        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPING);
+        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPED);
 
         StepExecution updatedStep = updated.getStepExecutions().iterator().next();
         assertThat(updatedStep.getStatus()).isEqualTo(BatchStatus.STOPPING);
@@ -153,8 +152,39 @@ class BatchGracefulShutdownListenerTest {
         shutdownListener.stopLocallyOwnedExecutions();
 
         // Assert
-        JobExecution untouched = jobExplorer.getJobExecution(execution.getId());
+        JobExecution untouched = jobRepository.getJobExecution(execution.getId());
         assertThat(untouched).isNotNull();
         assertThat(untouched.getStatus()).isEqualTo(BatchStatus.STARTED);
+    }
+
+    @Test
+    @DisplayName("Should transition locally held execution to STOPPED via repository fallback when JobOperator fails")
+    void shouldTransitionToStoppedWhenJobOperatorThrows() throws Exception {
+        JobParameters params = new JobParametersBuilder()
+                .addLong("testShutdownOperatorFailRunId", System.currentTimeMillis() + 3000)
+                .toJobParameters();
+
+        JobExecution execution = jobRepository.createJobExecution(DailyMarketSummaryJobConfig.JOB_NAME, params);
+        execution.setStatus(BatchStatus.STARTED);
+        jobRepository.update(execution);
+
+        boolean locked = advisoryLockManager.tryLock(execution.getId());
+        assertThat(locked).isTrue();
+
+        JobOperator failingOperator = mock(JobOperator.class);
+        when(failingOperator.stop(execution)).thenThrow(new RuntimeException("Simulated JobOperator failure"));
+
+        BatchGracefulShutdownListener fallbackListener = new BatchGracefulShutdownListener(
+                failingOperator, jobRepository, advisoryLockManager, advisoryLockListener
+        );
+
+        int stoppedCount = fallbackListener.stopLocallyOwnedExecutions();
+        assertThat(stoppedCount).isGreaterThanOrEqualTo(1);
+
+        JobExecution updated = jobRepository.getJobExecution(execution.getId());
+        assertThat(updated).isNotNull();
+        assertThat(updated.getStatus()).isEqualTo(BatchStatus.STOPPED);
+
+        advisoryLockManager.unlock(execution.getId());
     }
 }

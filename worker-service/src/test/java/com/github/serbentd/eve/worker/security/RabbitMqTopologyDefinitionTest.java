@@ -1,9 +1,9 @@
 package com.github.serbentd.eve.worker.security;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -22,7 +22,7 @@ class RabbitMqTopologyDefinitionTest {
     @DisplayName("Should validate /eve_market vhost, scoped users, and least-privilege permissions in definitions.json")
     void shouldValidateLeastPrivilegeBrokerTopology() throws Exception {
         Path path = resolvePath(DEFINITIONS_PATH);
-        ObjectMapper mapper = new ObjectMapper();
+        JsonMapper mapper = JsonMapper.builder().build();
 
         JsonNode root;
         try (InputStream is = Files.newInputStream(path)) {
@@ -33,14 +33,14 @@ class RabbitMqTopologyDefinitionTest {
         JsonNode vhostsNode = root.get("vhosts");
         assertThat(vhostsNode).isNotNull();
         List<String> vhosts = new ArrayList<>();
-        vhostsNode.forEach(v -> vhosts.add(v.get("name").asText()));
+        vhostsNode.forEach(v -> vhosts.add(v.get("name").asString()));
         assertThat(vhosts).contains("/eve_market");
 
         // 2. Scoped Users
         JsonNode usersNode = root.get("users");
         assertThat(usersNode).isNotNull();
         List<String> users = new ArrayList<>();
-        usersNode.forEach(u -> users.add(u.get("name").asText()));
+        usersNode.forEach(u -> users.add(u.get("name").asString()));
         assertThat(users).contains(
                 "poller_producer",
                 "worker_consumer",
@@ -58,35 +58,35 @@ class RabbitMqTopologyDefinitionTest {
         boolean batchWorkerVerified = false;
 
         for (JsonNode perm : permsNode) {
-            String vhost = perm.get("vhost").asText();
-            String user = perm.get("user").asText();
+            String vhost = perm.get("vhost").asString();
+            String user = perm.get("user").asString();
             if (!"/eve_market".equals(vhost)) {
                 continue;
             }
 
             if ("poller_producer".equals(user)) {
                 // Producers must hold write-only publication rights on exchanges, cannot consume or configure
-                assertThat(perm.get("configure").asText()).isEqualTo("^$");
-                assertThat(perm.get("write").asText()).isEqualTo("^eve\\.market\\.orders$");
-                assertThat(perm.get("read").asText()).isEqualTo("^$");
+                assertThat(perm.get("configure").asString()).isEqualTo("^$");
+                assertThat(perm.get("write").asString()).isEqualTo("^eve\\.market\\.orders$");
+                assertThat(perm.get("read").asString()).isEqualTo("^$");
                 pollerVerified = true;
             } else if ("worker_consumer".equals(user)) {
                 // Consumers must hold read-only consumption rights on their specific queues, cannot publish or configure
-                assertThat(perm.get("configure").asText()).isEqualTo("^$");
-                assertThat(perm.get("write").asText()).isEqualTo("^$");
-                assertThat(perm.get("read").asText()).isEqualTo("^eve\\.market\\.orders\\.worker$");
+                assertThat(perm.get("configure").asString()).isEqualTo("^$");
+                assertThat(perm.get("write").asString()).isEqualTo("^$");
+                assertThat(perm.get("read").asString()).isEqualTo("^eve\\.market\\.orders\\.worker$");
                 workerVerified = true;
             } else if ("batch_manager_producer".equals(user)) {
                 // Batch Manager holds write-only publication rights on the partition exchange
-                assertThat(perm.get("configure").asText()).isEqualTo("^$");
-                assertThat(perm.get("write").asText()).isEqualTo("^eve\\.batch\\.partition\\.exchange$");
-                assertThat(perm.get("read").asText()).isEqualTo("^$");
+                assertThat(perm.get("configure").asString()).isEqualTo("^$");
+                assertThat(perm.get("write").asString()).isEqualTo("^eve\\.batch\\.partition\\.exchange$");
+                assertThat(perm.get("read").asString()).isEqualTo("^$");
                 batchManagerVerified = true;
             } else if ("batch_worker_consumer".equals(user)) {
                 // Batch Worker holds read-only consumption rights on the partition requests queue
-                assertThat(perm.get("configure").asText()).isEqualTo("^$");
-                assertThat(perm.get("write").asText()).isEqualTo("^$");
-                assertThat(perm.get("read").asText()).isEqualTo("^eve\\.batch\\.partition\\.requests$");
+                assertThat(perm.get("configure").asString()).isEqualTo("^$");
+                assertThat(perm.get("write").asString()).isEqualTo("^$");
+                assertThat(perm.get("read").asString()).isEqualTo("^eve\\.batch\\.partition\\.requests$");
                 batchWorkerVerified = true;
             }
         }
@@ -100,7 +100,7 @@ class RabbitMqTopologyDefinitionTest {
         JsonNode exchangesNode = root.get("exchanges");
         assertThat(exchangesNode).isNotNull();
         List<String> exchanges = new ArrayList<>();
-        exchangesNode.forEach(e -> exchanges.add(e.get("name").asText()));
+        exchangesNode.forEach(e -> exchanges.add(e.get("name").asString()));
         assertThat(exchanges).contains(
                 "eve.market.orders",
                 "eve.market.orders.dlx",
@@ -115,16 +115,16 @@ class RabbitMqTopologyDefinitionTest {
         boolean batchQueueVerified = false;
 
         for (JsonNode q : queuesNode) {
-            String qName = q.get("name").asText();
+            String qName = q.get("name").asString();
             if ("eve.market.orders.worker".equals(qName)) {
                 JsonNode args = q.get("arguments");
-                assertThat(args.get("x-dead-letter-exchange").asText()).isEqualTo("eve.market.orders.dlx");
-                assertThat(args.get("x-dead-letter-routing-key").asText()).isEqualTo("eve.market.orders.dlq");
+                assertThat(args.get("x-dead-letter-exchange").asString()).isEqualTo("eve.market.orders.dlx");
+                assertThat(args.get("x-dead-letter-routing-key").asString()).isEqualTo("eve.market.orders.dlq");
                 workerQueueVerified = true;
             } else if ("eve.batch.partition.requests".equals(qName)) {
                 JsonNode args = q.get("arguments");
-                assertThat(args.get("x-dead-letter-exchange").asText()).isEqualTo("eve.batch.partition.dlx");
-                assertThat(args.get("x-dead-letter-routing-key").asText()).isEqualTo("eve.batch.partition.dlq");
+                assertThat(args.get("x-dead-letter-exchange").asString()).isEqualTo("eve.batch.partition.dlx");
+                assertThat(args.get("x-dead-letter-routing-key").asString()).isEqualTo("eve.batch.partition.dlq");
                 batchQueueVerified = true;
             }
         }

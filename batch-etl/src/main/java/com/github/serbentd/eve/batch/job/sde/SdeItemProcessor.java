@@ -2,7 +2,7 @@ package com.github.serbentd.eve.batch.job.sde;
 
 import com.github.serbentd.eve.batch.domain.DimItemEntity;
 import com.github.serbentd.eve.batch.dto.SdeItemDto;
-import org.springframework.batch.item.ItemProcessor;
+import org.springframework.batch.infrastructure.item.ItemProcessor;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;

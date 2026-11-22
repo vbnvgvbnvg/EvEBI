@@ -12,11 +12,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -27,7 +27,10 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:eve_liquidity_test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH",
+        "eve.batch.kubernetes.execution-mode=ORDER_BOOK_LIQUIDITY"
+})
 class OrderBookLiquidityJobIntegrationTest {
 
     private static final Long THE_FORGE_REGION_ID = 10000002L;
@@ -41,7 +44,7 @@ class OrderBookLiquidityJobIntegrationTest {
     private static final Integer EXPECTED_DATE_ID = 20261012;
     private static final Integer EXPECTED_TIME_ID = 1430;
 
-    private final JobLauncher jobLauncher;
+    private final JobOperator jobOperator;
     private final Job orderBookLiquidityJob;
     private final StagingMarketOrderRepository stagingRepository;
     private final FactOrderBookLiquidityRepository factRepository;
@@ -50,14 +53,14 @@ class OrderBookLiquidityJobIntegrationTest {
     private final DimStationRepository dimStationRepository;
 
     OrderBookLiquidityJobIntegrationTest(
-            JobLauncher jobLauncher,
+            JobOperator jobOperator,
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
             StagingMarketOrderRepository stagingRepository,
             FactOrderBookLiquidityRepository factRepository,
             DimDateRepository dimDateRepository,
             DimTimeRepository dimTimeRepository,
             DimStationRepository dimStationRepository) {
-        this.jobLauncher = jobLauncher;
+        this.jobOperator = jobOperator;
         this.orderBookLiquidityJob = orderBookLiquidityJob;
         this.stagingRepository = stagingRepository;
         this.factRepository = factRepository;
@@ -111,7 +114,7 @@ class OrderBookLiquidityJobIntegrationTest {
                 .toJobParameters();
 
         // Act
-        JobExecution execution = jobLauncher.run(orderBookLiquidityJob, params);
+        JobExecution execution = jobOperator.start(orderBookLiquidityJob, params);
 
         // Assert
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
@@ -152,7 +155,7 @@ class OrderBookLiquidityJobIntegrationTest {
                 .toJobParameters();
 
         // Act
-        JobExecution execution = jobLauncher.run(orderBookLiquidityJob, params);
+        JobExecution execution = jobOperator.start(orderBookLiquidityJob, params);
 
         // Assert
         assertThat(execution.getStatus()).isEqualTo(BatchStatus.COMPLETED);
@@ -188,7 +191,7 @@ class OrderBookLiquidityJobIntegrationTest {
                 .addLong("run.id", 1L)
                 .toJobParameters();
 
-        JobExecution run1 = jobLauncher.run(orderBookLiquidityJob, params1);
+        JobExecution run1 = jobOperator.start(orderBookLiquidityJob, params1);
         assertThat(run1.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         // Update volume in staging order
@@ -200,7 +203,7 @@ class OrderBookLiquidityJobIntegrationTest {
                 .addLong("run.id", 2L)
                 .toJobParameters();
 
-        JobExecution run2 = jobLauncher.run(orderBookLiquidityJob, params2);
+        JobExecution run2 = jobOperator.start(orderBookLiquidityJob, params2);
         assertThat(run2.getStatus()).isEqualTo(BatchStatus.COMPLETED);
 
         List<FactOrderBookLiquidityEntity> allFacts = factRepository.findAll();

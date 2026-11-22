@@ -1,16 +1,14 @@
 package com.github.serbentd.eve.poller.event;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.serbentd.eve.common.event.MarketOrderEvent;
 import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -26,14 +24,12 @@ class EventSerializationTest {
     private static final Long JITA_SYSTEM_ID = 30000142L;
     private static final Long JITA_4_4_STATION_ID = 60003760L;
 
-    private static ObjectMapper objectMapper;
+    private static JsonMapper jsonMapper;
     private static Validator validator;
 
     @BeforeAll
     static void setUp() {
-        objectMapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        jsonMapper = JsonMapper.builder().build();
 
         try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
             validator = factory.getValidator();
@@ -61,7 +57,7 @@ class EventSerializationTest {
                 testTime
         );
 
-        String json = objectMapper.writeValueAsString(original);
+        String json = jsonMapper.writeValueAsString(original);
 
         // Verify key JSON attributes and ISO-8601 string formatting
         assertThat(json).contains("\"orderId\":1001");
@@ -69,7 +65,7 @@ class EventSerializationTest {
         assertThat(json).contains("\"issued\":\"2026-09-18T12:00:00Z\"");
         assertThat(json).contains("\"snapshotId\":\"snap-123\"");
 
-        MarketOrderEvent deserialized = objectMapper.readValue(json, MarketOrderEvent.class);
+        MarketOrderEvent deserialized = jsonMapper.readValue(json, MarketOrderEvent.class);
         assertThat(deserialized).isEqualTo(original);
     }
 
@@ -84,7 +80,7 @@ class EventSerializationTest {
                 testTime
         );
 
-        String json = objectMapper.writeValueAsString(original);
+        String json = jsonMapper.writeValueAsString(original);
 
         assertThat(json).contains("\"regionId\":10000002");
         assertThat(json).contains("\"snapshotId\":\"snap-456\"");
@@ -92,7 +88,7 @@ class EventSerializationTest {
         assertThat(json).contains("\"totalPages\":15");
         assertThat(json).contains("\"completedAt\":\"2026-09-18T13:00:00Z\"");
 
-        RegionSnapshotCompletedEvent deserialized = objectMapper.readValue(json, RegionSnapshotCompletedEvent.class);
+        RegionSnapshotCompletedEvent deserialized = jsonMapper.readValue(json, RegionSnapshotCompletedEvent.class);
         assertThat(deserialized).isEqualTo(original);
     }
 
