@@ -10,10 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.JobInstance;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.launch.JobOperator;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -37,19 +38,19 @@ class BatchJobSchedulerTest {
     @Test
     @DisplayName("Should seed temporal dimensions and trigger scheduled jobs on STANDALONE node")
     void scheduler_whenStandaloneRole_shouldExecuteAllTriggers() throws Exception {
-        JobLauncher jobLauncher = mock(JobLauncher.class);
+        JobOperator jobOperator = mock(JobOperator.class);
         Job sdeSyncJob = mock(Job.class);
         Job dailyMarketSummaryJob = mock(Job.class);
         Job orderBookLiquidityJob = mock(Job.class);
         DateDimensionService dateDimensionService = mock(DateDimensionService.class);
         TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
 
-        when(jobLauncher.run(any(Job.class), any(JobParameters.class))).thenReturn(new JobExecution(1L));
+        when(jobOperator.start(any(Job.class), any(JobParameters.class))).thenReturn(new JobExecution(1L, new JobInstance(1L, "testJob"), new JobParameters()));
 
         BatchProperties properties = createProperties(PartitionRole.STANDALONE);
 
         BatchJobScheduler scheduler = new BatchJobScheduler(
-                jobLauncher,
+                jobOperator,
                 sdeSyncJob,
                 dailyMarketSummaryJob,
                 orderBookLiquidityJob,
@@ -68,38 +69,38 @@ class BatchJobSchedulerTest {
         ArgumentCaptor<JobParameters> paramsCaptor = ArgumentCaptor.forClass(JobParameters.class);
 
         scheduler.scheduleSdeSync();
-        verify(jobLauncher).run(eq(sdeSyncJob), paramsCaptor.capture());
+        verify(jobOperator).start(eq(sdeSyncJob), paramsCaptor.capture());
         JobParameters sdeParams = paramsCaptor.getValue();
         assertThat(sdeParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
         assertThat(sdeParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
-        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.POD_NODE_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(sdeParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
-        assertThat(sdeParams.getParameters().get("targetDate").isIdentifying()).isTrue();
+        assertThat(sdeParams.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(sdeParams.getParameter(BatchJobParametersFactory.POD_NODE_NAME_PARAM).identifying()).isFalse();
+        assertThat(sdeParams.getParameter(BatchJobParametersFactory.TIMESTAMP_PARAM).identifying()).isFalse();
+        assertThat(sdeParams.getParameter("targetDate").identifying()).isTrue();
 
         scheduler.scheduleDailySummary();
-        verify(jobLauncher).run(eq(dailyMarketSummaryJob), paramsCaptor.capture());
+        verify(jobOperator).start(eq(dailyMarketSummaryJob), paramsCaptor.capture());
         JobParameters dailyParams = paramsCaptor.getValue();
         assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
         assertThat(dailyParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
-        assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(dailyParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
-        assertThat(dailyParams.getParameters().get("targetDate").isIdentifying()).isTrue();
+        assertThat(dailyParams.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(dailyParams.getParameter(BatchJobParametersFactory.TIMESTAMP_PARAM).identifying()).isFalse();
+        assertThat(dailyParams.getParameter("targetDate").identifying()).isTrue();
 
         scheduler.scheduleLiquiditySnapshot();
-        verify(jobLauncher).run(eq(orderBookLiquidityJob), paramsCaptor.capture());
+        verify(jobOperator).start(eq(orderBookLiquidityJob), paramsCaptor.capture());
         JobParameters liqParams = paramsCaptor.getValue();
         assertThat(liqParams.getString(BatchJobParametersFactory.POD_NAME_PARAM)).isEqualTo("test-pod");
         assertThat(liqParams.getString(BatchJobParametersFactory.POD_NODE_NAME_PARAM)).isEqualTo("test-node");
-        assertThat(liqParams.getParameters().get(BatchJobParametersFactory.POD_NAME_PARAM).isIdentifying()).isFalse();
-        assertThat(liqParams.getParameters().get(BatchJobParametersFactory.TIMESTAMP_PARAM).isIdentifying()).isFalse();
-        assertThat(liqParams.getParameters().get("snapshotTime").isIdentifying()).isTrue();
+        assertThat(liqParams.getParameter(BatchJobParametersFactory.POD_NAME_PARAM).identifying()).isFalse();
+        assertThat(liqParams.getParameter(BatchJobParametersFactory.TIMESTAMP_PARAM).identifying()).isFalse();
+        assertThat(liqParams.getParameter("snapshotTime").identifying()).isTrue();
     }
 
     @Test
     @DisplayName("Should skip all scheduled triggers and startup seeding when node role is WORKER")
     void scheduler_whenWorkerRole_shouldSkipExecution() throws Exception {
-        JobLauncher jobLauncher = mock(JobLauncher.class);
+        JobOperator jobOperator = mock(JobOperator.class);
         Job sdeSyncJob = mock(Job.class);
         Job dailyMarketSummaryJob = mock(Job.class);
         Job orderBookLiquidityJob = mock(Job.class);
@@ -109,7 +110,7 @@ class BatchJobSchedulerTest {
         BatchProperties properties = createProperties(PartitionRole.WORKER);
 
         BatchJobScheduler scheduler = new BatchJobScheduler(
-                jobLauncher,
+                jobOperator,
                 sdeSyncJob,
                 dailyMarketSummaryJob,
                 orderBookLiquidityJob,
@@ -124,19 +125,19 @@ class BatchJobSchedulerTest {
         verify(timeDimensionService, never()).seedTimeDimension();
 
         scheduler.scheduleSdeSync();
-        verify(jobLauncher, never()).run(eq(sdeSyncJob), any());
+        verify(jobOperator, never()).start(eq(sdeSyncJob), any());
 
         scheduler.scheduleDailySummary();
-        verify(jobLauncher, never()).run(eq(dailyMarketSummaryJob), any());
+        verify(jobOperator, never()).start(eq(dailyMarketSummaryJob), any());
 
         scheduler.scheduleLiquiditySnapshot();
-        verify(jobLauncher, never()).run(eq(orderBookLiquidityJob), any());
+        verify(jobOperator, never()).start(eq(orderBookLiquidityJob), any());
     }
 
     @Test
     @DisplayName("Should skip all scheduled triggers and startup seeding when node is running in one-shot mode")
     void scheduler_whenOneShotMode_shouldSkipExecution() throws Exception {
-        JobLauncher jobLauncher = mock(JobLauncher.class);
+        JobOperator jobOperator = mock(JobOperator.class);
         Job sdeSyncJob = mock(Job.class);
         Job dailyMarketSummaryJob = mock(Job.class);
         Job orderBookLiquidityJob = mock(Job.class);
@@ -157,7 +158,7 @@ class BatchJobSchedulerTest {
         );
 
         BatchJobScheduler scheduler = new BatchJobScheduler(
-                jobLauncher,
+                jobOperator,
                 sdeSyncJob,
                 dailyMarketSummaryJob,
                 orderBookLiquidityJob,
@@ -172,32 +173,32 @@ class BatchJobSchedulerTest {
         verify(timeDimensionService, never()).seedTimeDimension();
 
         scheduler.scheduleSdeSync();
-        verify(jobLauncher, never()).run(eq(sdeSyncJob), any());
+        verify(jobOperator, never()).start(eq(sdeSyncJob), any());
 
         scheduler.scheduleDailySummary();
-        verify(jobLauncher, never()).run(eq(dailyMarketSummaryJob), any());
+        verify(jobOperator, never()).start(eq(dailyMarketSummaryJob), any());
 
         scheduler.scheduleLiquiditySnapshot();
-        verify(jobLauncher, never()).run(eq(orderBookLiquidityJob), any());
+        verify(jobOperator, never()).start(eq(orderBookLiquidityJob), any());
     }
 
     @Test
     @DisplayName("Should catch and log exceptions during scheduled runs without propagating")
     void scheduler_whenJobLaunchThrows_shouldCatchGracefully() throws Exception {
-        JobLauncher jobLauncher = mock(JobLauncher.class);
+        JobOperator jobOperator = mock(JobOperator.class);
         Job sdeSyncJob = mock(Job.class);
         Job dailyMarketSummaryJob = mock(Job.class);
         Job orderBookLiquidityJob = mock(Job.class);
         DateDimensionService dateDimensionService = mock(DateDimensionService.class);
         TimeDimensionService timeDimensionService = mock(TimeDimensionService.class);
 
-        when(jobLauncher.run(any(Job.class), any(JobParameters.class)))
+        when(jobOperator.start(any(Job.class), any(JobParameters.class)))
                 .thenThrow(new RuntimeException("Simulated job launch failure"));
 
         BatchProperties properties = createProperties(PartitionRole.STANDALONE);
 
         BatchJobScheduler scheduler = new BatchJobScheduler(
-                jobLauncher,
+                jobOperator,
                 sdeSyncJob,
                 dailyMarketSummaryJob,
                 orderBookLiquidityJob,
@@ -207,14 +208,14 @@ class BatchJobSchedulerTest {
                 new BatchJobParametersFactory(properties)
         );
 
-        // Verify none of these throw exceptions when the underlying job launcher fails
+        // Verify none of these throw exceptions when the underlying job operator fails
         assertDoesNotThrow(scheduler::scheduleSdeSync);
         assertDoesNotThrow(scheduler::scheduleDailySummary);
         assertDoesNotThrow(scheduler::scheduleLiquiditySnapshot);
 
-        verify(jobLauncher).run(eq(sdeSyncJob), any(JobParameters.class));
-        verify(jobLauncher).run(eq(dailyMarketSummaryJob), any(JobParameters.class));
-        verify(jobLauncher).run(eq(orderBookLiquidityJob), any(JobParameters.class));
+        verify(jobOperator).start(eq(sdeSyncJob), any(JobParameters.class));
+        verify(jobOperator).start(eq(dailyMarketSummaryJob), any(JobParameters.class));
+        verify(jobOperator).start(eq(orderBookLiquidityJob), any(JobParameters.class));
     }
 
     private static BatchProperties createProperties(PartitionRole role) {

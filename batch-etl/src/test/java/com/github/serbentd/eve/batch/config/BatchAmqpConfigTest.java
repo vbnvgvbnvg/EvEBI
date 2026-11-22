@@ -1,6 +1,5 @@
 package com.github.serbentd.eve.batch.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.AmqpTemplate;
@@ -17,6 +16,7 @@ import org.springframework.batch.integration.partition.StepExecutionRequest;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.messaging.MessageChannel;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -42,14 +42,13 @@ class BatchAmqpConfigTest {
     @Test
     @DisplayName("Should serialize and deserialize StepExecutionRequest with Jackson mixin")
     void shouldSerializeAndDeserializeStepExecutionRequest() {
-        MessageConverter converter = batchAmqpConfig.batchJsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = batchAmqpConfig.batchJsonMessageConverter(JsonMapper.builder().build());
 
-        StepExecutionRequest request = new StepExecutionRequest("dailyMarketSummaryWorkerStep", 101L, 202L);
+        StepExecutionRequest request = new StepExecutionRequest("dailyMarketSummaryWorkerStep", 202L);
         Message message = converter.toMessage(request, new MessageProperties());
 
         String json = new String(message.getBody(), StandardCharsets.UTF_8);
         assertThat(json).contains("\"stepName\":\"dailyMarketSummaryWorkerStep\"");
-        assertThat(json).contains("\"jobExecutionId\":101");
         assertThat(json).contains("\"stepExecutionId\":202");
 
         Object deserialized = converter.fromMessage(message);
@@ -57,7 +56,6 @@ class BatchAmqpConfigTest {
 
         StepExecutionRequest result = (StepExecutionRequest) deserialized;
         assertThat(result.getStepName()).isEqualTo("dailyMarketSummaryWorkerStep");
-        assertThat(result.getJobExecutionId()).isEqualTo(101L);
         assertThat(result.getStepExecutionId()).isEqualTo(202L);
     }
 
@@ -77,7 +75,7 @@ class BatchAmqpConfigTest {
     }
 
     private MessageConverter batchJsonMessageConverterUnderTest() {
-        return batchAmqpConfig.batchJsonMessageConverter(new ObjectMapper());
+        return batchAmqpConfig.batchJsonMessageConverter(JsonMapper.builder().build());
     }
 
     @Test

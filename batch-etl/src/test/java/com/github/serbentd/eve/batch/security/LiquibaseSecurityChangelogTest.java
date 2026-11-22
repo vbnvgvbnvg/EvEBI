@@ -19,6 +19,7 @@ class LiquibaseSecurityChangelogTest {
 
     private static final String MASTER_CHANGELOG = "src/main/resources/db/changelog/db.changelog-master.xml";
     private static final String SECURITY_CHANGELOG = "src/main/resources/db/changelog/security/01-configure-least-privilege-roles.xml";
+    private static final String BATCH_6_MIGRATION_CHANGELOG = "src/main/resources/db/changelog/batch/02-migrate-spring-batch-6-metadata.xml";
 
     @Test
     @DisplayName("Master changelog must include security least-privilege changelog")
@@ -28,6 +29,34 @@ class LiquibaseSecurityChangelogTest {
 
         assertThat(content)
                 .contains("db/changelog/security/01-configure-least-privilege-roles.xml");
+    }
+
+    @Test
+    @DisplayName("Master changelog and Spring Batch 6 sequence migration changelog must configure both PostgreSQL and H2")
+    void batch6MetadataMigrationChangelog_shouldCoverPostgreSqlAndH2() throws Exception {
+        String masterContent = Files.readString(resolvePath(MASTER_CHANGELOG));
+        assertThat(masterContent)
+                .contains("db/changelog/batch/01-create-spring-batch-metadata.xml")
+                .contains("db/changelog/batch/02-migrate-spring-batch-6-metadata.xml");
+        assertThat(masterContent.indexOf("01-create-spring-batch-metadata.xml"))
+                .isLessThan(masterContent.indexOf("02-migrate-spring-batch-6-metadata.xml"));
+
+        Path migrationPath = resolvePath(BATCH_6_MIGRATION_CHANGELOG);
+        Document doc = parseXml(migrationPath);
+        NodeList changeSets = doc.getElementsByTagName("changeSet");
+        assertThat(changeSets.getLength()).isEqualTo(2);
+
+        Element pgChangeSet = (Element) changeSets.item(0);
+        assertThat(pgChangeSet.getAttribute("dbms")).isEqualTo("postgresql");
+
+        Element h2ChangeSet = (Element) changeSets.item(1);
+        assertThat(h2ChangeSet.getAttribute("dbms")).isEqualTo("h2");
+
+        String migrationSql = Files.readString(migrationPath);
+        assertThat(migrationSql)
+                .contains("ALTER SEQUENCE batch.BATCH_JOB_SEQ RENAME TO BATCH_JOB_INSTANCE_SEQ")
+                .contains("createSequence sequenceName=\"BATCH_JOB_INSTANCE_SEQ\" schemaName=\"batch\"")
+                .contains("dropSequence sequenceName=\"BATCH_JOB_SEQ\" schemaName=\"batch\"");
     }
 
     @Test

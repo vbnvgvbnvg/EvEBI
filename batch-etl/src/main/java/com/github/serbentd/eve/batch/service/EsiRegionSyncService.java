@@ -1,7 +1,5 @@
 package com.github.serbentd.eve.batch.service;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.serbentd.eve.batch.config.BatchProperties;
 import com.github.serbentd.eve.batch.dto.EsiUniverseNameDto;
 import com.github.serbentd.eve.batch.job.sde.SqlDialect;
@@ -12,6 +10,8 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.json.JsonMapper;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -65,7 +65,7 @@ public class EsiRegionSyncService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final HttpClient httpClient;
     private final ResourceLoader resourceLoader;
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper;
     private final SdeDownloadService sdeDownloadService;
     private final String upsertSql;
     private final java.util.concurrent.atomic.AtomicBoolean isSyncing = new java.util.concurrent.atomic.AtomicBoolean(false);
@@ -75,13 +75,13 @@ public class EsiRegionSyncService {
             DataSource dataSource,
             @Qualifier("esiHttpClient") HttpClient httpClient,
             ResourceLoader resourceLoader,
-            ObjectMapper objectMapper,
+            JsonMapper jsonMapper,
             SdeDownloadService sdeDownloadService) {
         this.batchProperties = batchProperties;
         this.jdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
         this.httpClient = httpClient;
         this.resourceLoader = resourceLoader;
-        this.objectMapper = objectMapper;
+        this.jsonMapper = jsonMapper;
         this.sdeDownloadService = sdeDownloadService;
 
         SqlDialect dialect = SqlDialect.detect(dataSource);
@@ -202,7 +202,7 @@ public class EsiRegionSyncService {
     private List<Long> fetchRegionIds(String url) throws IOException, InterruptedException {
         if (isLocalResource(url)) {
             try (InputStream is = resourceLoader.getResource(url).getInputStream()) {
-                return objectMapper.readValue(is, new TypeReference<List<Long>>() {});
+                return jsonMapper.readValue(is, new TypeReference<List<Long>>() {});
             }
         }
 
@@ -222,18 +222,18 @@ public class EsiRegionSyncService {
         }
 
         try (InputStream is = response.body()) {
-            return objectMapper.readValue(is, new TypeReference<List<Long>>() {});
+            return jsonMapper.readValue(is, new TypeReference<List<Long>>() {});
         }
     }
 
     private List<EsiUniverseNameDto> resolveNames(String url, List<Long> regionIds) throws IOException, InterruptedException {
         if (isLocalResource(url)) {
             try (InputStream is = resourceLoader.getResource(url).getInputStream()) {
-                return objectMapper.readValue(is, new TypeReference<List<EsiUniverseNameDto>>() {});
+                return jsonMapper.readValue(is, new TypeReference<List<EsiUniverseNameDto>>() {});
             }
         }
 
-        byte[] requestBody = objectMapper.writeValueAsBytes(regionIds);
+        byte[] requestBody = jsonMapper.writeValueAsBytes(regionIds);
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("User-Agent", batchProperties.esi().userAgent())
@@ -251,7 +251,7 @@ public class EsiRegionSyncService {
         }
 
         try (InputStream is = response.body()) {
-            return objectMapper.readValue(is, new TypeReference<List<EsiUniverseNameDto>>() {});
+            return jsonMapper.readValue(is, new TypeReference<List<EsiUniverseNameDto>>() {});
         }
     }
 

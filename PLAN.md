@@ -111,9 +111,11 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
     - [x] Externalize all production secrets and enforce zero plain-text credential commits.
     - [x] Integrate dependency vulnerability audits (OWASP Dependency-Check / GitHub Dependabot Alerts) in the build lifecycle.
     - [x] Add multi-stage `Dockerfile`s and Kubernetes `Deployment` manifests for `ingestion-poller` and `worker-service`.
-  - [ ] **Platform & Dependency Modernization (Spring Boot 4.x Upgrade):**
-    - [ ] Upgrade Spring Boot (`3.2.4` → `4.x`) and remediate High/Critical CVEs surfaced by `-Psecurity-audit` (Tomcat, Netty, Spring Framework, Jackson, PostgreSQL driver, RabbitMQ AMQP client, Log4j).
-    - [ ] Migrate impacted integrations (Jackson 3, Spring Batch 6, QueryDSL / Hibernate 7, OpenAPI Generator bindings, and test slices) with full regression verification.
+  - [x] **Platform & Dependency Modernization (Spring Boot 4.x Upgrade):**
+    - [x] Upgrade Spring Boot (`3.2.4` → `4.2.0`) and remediate High/Critical CVEs surfaced by `-Psecurity-audit` (Tomcat, Netty, Spring Framework, Jackson, PostgreSQL driver, RabbitMQ AMQP client, Log4j).
+    - [x] Migrate impacted integrations (Jackson 3, Spring Batch 6, OpenFeign QueryDSL 7 / Hibernate 7, OpenAPI Generator 7.27 bindings, and modular test slices) with full regression verification.
+  - [ ] **ESI Client Resilience Wiring (Resilience4j Follow-Up):**
+    - [ ] Wire Resilience4j `RateLimiter`, `CircuitBreaker`, and `Retry` operators (via `resilience4j-spring-boot4` / `resilience4j-reactor`) into `ingestion-poller` external ESI calls (`MarketOrderPoller`, `MarketRegionDiscoveryService`) with externalized YAML configuration and unit/integration tests.
   - [ ] **Containerized Integration Testing & CI/CD:**
     - [ ] Configure optional Testcontainers profile for real-broker RabbitMQ (with auth/vhost) and true PostgreSQL integration tests (requiring Docker / OrbStack).
     - [ ] Set up CI/CD pipeline (GitHub Actions) with automated containerized service test execution and SonarCloud quality gates.

@@ -9,19 +9,18 @@ import com.github.serbentd.eve.batch.reaper.AdvisoryLockJobExecutionListener;
 import com.github.serbentd.eve.batch.repository.StagingMarketOrderRepository;
 import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersInvalidException;
-import org.springframework.batch.core.JobParametersValidator;
-import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
+import org.springframework.batch.core.job.parameters.JobParametersValidator;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.integration.partition.RemotePartitioningManagerStepBuilderFactory;
 import org.springframework.batch.integration.partition.RemotePartitioningWorkerStepBuilderFactory;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,7 +37,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Objects;
 
 /**
- * Spring Batch 5 configuration for {@code orderBookLiquidityJob}.
+ * Spring Batch 6 configuration for {@code orderBookLiquidityJob}.
  * Aggregates active staging market orders into conformed periodic snapshot records
  * in {@code analytics.fact_order_book_liquidity} with spread and volume depth,
  * supporting optional distributed remote partitioning across market regions.
@@ -84,13 +83,13 @@ public class OrderBookLiquidityJobConfig {
         return parameters -> {
             String snapshotTimeStr = parameters != null ? parameters.getString(SNAPSHOT_TIME_PARAM) : null;
             if (snapshotTimeStr == null || snapshotTimeStr.isBlank()) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                         "Required job parameter '" + SNAPSHOT_TIME_PARAM + "' (ISO-8601 Instant) is missing");
             }
             try {
                 Instant.parse(snapshotTimeStr);
             } catch (DateTimeParseException e) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                         "Job parameter '" + SNAPSHOT_TIME_PARAM + "' must be a valid ISO-8601 Instant, got: " + snapshotTimeStr);
             }
         };
@@ -175,7 +174,8 @@ public class OrderBookLiquidityJobConfig {
             BatchProperties batchProperties) {
 
         return new StepBuilder(STEP_NAME, jobRepository)
-                .<OrderBookLiquidityAggregationDto, FactOrderBookLiquidityEntity>chunk(batchProperties.chunkSize().orderBookLiquidity(), transactionManager)
+                .<OrderBookLiquidityAggregationDto, FactOrderBookLiquidityEntity>chunk(batchProperties.chunkSize().orderBookLiquidity())
+                .transactionManager(transactionManager)
                 .reader(orderBookLiquidityReader)
                 .processor(processor)
                 .writer(writer)
@@ -190,13 +190,12 @@ public class OrderBookLiquidityJobConfig {
             OrderBookLiquidityProcessor processor,
             OrderBookLiquidityWriter writer,
             @Qualifier(BatchAmqpConfig.LIQUIDITY_INBOUND_CHANNEL) MessageChannel liquidityPartitionRequestsInboundChannel,
-            BatchProperties batchProperties,
-            JobExplorer jobExplorer) {
+            BatchProperties batchProperties) {
 
         return workerStepBuilderFactory.get(WORKER_STEP_NAME)
                 .inputChannel(liquidityPartitionRequestsInboundChannel)
-                .jobExplorer(jobExplorer)
-                .<OrderBookLiquidityAggregationDto, FactOrderBookLiquidityEntity>chunk(batchProperties.chunkSize().orderBookLiquidity(), transactionManager)
+                .<OrderBookLiquidityAggregationDto, FactOrderBookLiquidityEntity>chunk(batchProperties.chunkSize().orderBookLiquidity())
+                .transactionManager(transactionManager)
                 .reader(orderBookLiquidityPartitionReader)
                 .processor(processor)
                 .writer(writer)
@@ -208,13 +207,11 @@ public class OrderBookLiquidityJobConfig {
             RemotePartitioningManagerStepBuilderFactory managerStepBuilderFactory,
             @Qualifier("liquidityRegionPartitioner") RegionPartitioner liquidityRegionPartitioner,
             @Qualifier(BatchAmqpConfig.OUTBOUND_CHANNEL) MessageChannel partitionRequestsOutboundChannel,
-            JobExplorer jobExplorer,
             BatchProperties batchProperties) {
 
         return managerStepBuilderFactory.get(MANAGER_STEP_NAME)
                 .partitioner(WORKER_STEP_NAME, liquidityRegionPartitioner)
                 .outputChannel(partitionRequestsOutboundChannel)
-                .jobExplorer(jobExplorer)
                 .pollInterval(batchProperties.remotePartitioning().pollInterval().toMillis())
                 .timeout(batchProperties.remotePartitioning().timeout().toMillis())
                 .build();

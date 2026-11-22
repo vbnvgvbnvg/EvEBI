@@ -4,8 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.ExitStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -26,7 +25,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ResilientJobExecutionReaper implements ApplicationRunner {
 
-    private final JobExplorer jobExplorer;
     private final JobRepository jobRepository;
     private final AdvisoryLockManager advisoryLockManager;
 
@@ -43,8 +41,8 @@ public class ResilientJobExecutionReaper implements ApplicationRunner {
     public int reapOrphanedExecutions() {
         int reapedCount = 0;
 
-        for (String jobName : jobExplorer.getJobNames()) {
-            Set<JobExecution> runningExecutions = jobExplorer.findRunningJobExecutions(jobName);
+        for (String jobName : jobRepository.getJobNames()) {
+            Set<JobExecution> runningExecutions = jobRepository.findRunningJobExecutions(jobName);
 
             for (JobExecution execution : runningExecutions) {
                 long lockId = execution.getId();

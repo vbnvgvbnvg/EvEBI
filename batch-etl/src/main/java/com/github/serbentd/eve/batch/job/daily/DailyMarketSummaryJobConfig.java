@@ -8,19 +8,18 @@ import com.github.serbentd.eve.batch.partition.RegionPartitioner;
 import com.github.serbentd.eve.batch.reaper.AdvisoryLockJobExecutionListener;
 import com.github.serbentd.eve.batch.repository.StagingMarketOrderRepository;
 import com.github.serbentd.eve.batch.service.DateDimensionService;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobParametersInvalidException;
-import org.springframework.batch.core.JobParametersValidator;
-import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.StepScope;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.job.parameters.InvalidJobParametersException;
+import org.springframework.batch.core.job.parameters.JobParametersValidator;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.infrastructure.item.database.JdbcCursorItemReader;
+import org.springframework.batch.infrastructure.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.batch.integration.partition.RemotePartitioningManagerStepBuilderFactory;
 import org.springframework.batch.integration.partition.RemotePartitioningWorkerStepBuilderFactory;
-import org.springframework.batch.item.database.JdbcCursorItemReader;
-import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -37,7 +36,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Objects;
 
 /**
- * Spring Batch 5 configuration for {@code dailyMarketSummaryJob}.
+ * Spring Batch 6 configuration for {@code dailyMarketSummaryJob}.
  * Aggregates raw staging market orders into conformed periodic daily snapshots
  * using streaming JDBC cursors, optional remote partitioning across market regions,
  * and atomic SQL batch upserts.
@@ -93,13 +92,13 @@ public class DailyMarketSummaryJobConfig {
         return parameters -> {
             String targetDateStr = parameters != null ? parameters.getString(TARGET_DATE_PARAM) : null;
             if (targetDateStr == null || targetDateStr.isBlank()) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                         "Required job parameter '" + TARGET_DATE_PARAM + "' (ISO-8601 LocalDate) is missing");
             }
             try {
                 LocalDate.parse(targetDateStr);
             } catch (DateTimeParseException e) {
-                throw new JobParametersInvalidException(
+                throw new InvalidJobParametersException(
                         "Job parameter '" + TARGET_DATE_PARAM + "' must be a valid ISO-8601 LocalDate, got: " + targetDateStr);
             }
         };
@@ -196,7 +195,8 @@ public class DailyMarketSummaryJobConfig {
             BatchProperties batchProperties) {
 
         return new StepBuilder(STEP_NAME, jobRepository)
-                .<MarketDailyAggregationDto, FactMarketDailySummaryEntity>chunk(batchProperties.chunkSize().dailyMarketSummary(), transactionManager)
+                .<MarketDailyAggregationDto, FactMarketDailySummaryEntity>chunk(batchProperties.chunkSize().dailyMarketSummary())
+                .transactionManager(transactionManager)
                 .reader(dailyMarketOrderReader)
                 .processor(processor)
                 .writer(writer)
@@ -211,13 +211,12 @@ public class DailyMarketSummaryJobConfig {
             DailyMarketSummaryProcessor processor,
             DailyMarketSummaryWriter writer,
             @Qualifier(BatchAmqpConfig.DAILY_INBOUND_CHANNEL) MessageChannel dailyPartitionRequestsInboundChannel,
-            BatchProperties batchProperties,
-            JobExplorer jobExplorer) {
+            BatchProperties batchProperties) {
 
         return workerStepBuilderFactory.get(WORKER_STEP_NAME)
                 .inputChannel(dailyPartitionRequestsInboundChannel)
-                .jobExplorer(jobExplorer)
-                .<MarketDailyAggregationDto, FactMarketDailySummaryEntity>chunk(batchProperties.chunkSize().dailyMarketSummary(), transactionManager)
+                .<MarketDailyAggregationDto, FactMarketDailySummaryEntity>chunk(batchProperties.chunkSize().dailyMarketSummary())
+                .transactionManager(transactionManager)
                 .reader(dailyMarketOrderPartitionReader)
                 .processor(processor)
                 .writer(writer)
@@ -229,13 +228,11 @@ public class DailyMarketSummaryJobConfig {
             RemotePartitioningManagerStepBuilderFactory managerStepBuilderFactory,
             @Qualifier("dailySummaryRegionPartitioner") RegionPartitioner dailySummaryRegionPartitioner,
             @Qualifier(BatchAmqpConfig.OUTBOUND_CHANNEL) MessageChannel partitionRequestsOutboundChannel,
-            JobExplorer jobExplorer,
             BatchProperties batchProperties) {
 
         return managerStepBuilderFactory.get(MANAGER_STEP_NAME)
                 .partitioner(WORKER_STEP_NAME, dailySummaryRegionPartitioner)
                 .outputChannel(partitionRequestsOutboundChannel)
-                .jobExplorer(jobExplorer)
                 .pollInterval(batchProperties.remotePartitioning().pollInterval().toMillis())
                 .timeout(batchProperties.remotePartitioning().timeout().toMillis())
                 .build();

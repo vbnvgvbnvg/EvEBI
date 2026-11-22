@@ -1,6 +1,5 @@
 package com.github.serbentd.eve.worker.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.serbentd.eve.common.event.MarketOrderEvent;
 import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,8 +13,9 @@ import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -56,9 +56,9 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_shouldSerializeOffsetDateTimeAsIsoString() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
-        assertThat(converter).isInstanceOf(Jackson2JsonMessageConverter.class);
+        assertThat(converter).isInstanceOf(JacksonJsonMessageConverter.class);
 
         record SamplePayload(String name, OffsetDateTime timestamp) {}
         OffsetDateTime testTime = OffsetDateTime.of(2026, 9, 10, 12, 0, 0, 0, ZoneOffset.UTC);
@@ -73,7 +73,7 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_shouldDeserializeOrderListWithoutTypeErasureToLinkedHashMap() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
         String jsonList = """
                 [
@@ -116,7 +116,7 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_shouldDeserializeSnapshotCompletedEvent() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
         String json = """
                 {
@@ -143,7 +143,7 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_shouldDeserializeSingleMarketOrderEvent() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
         String json = """
                 {
@@ -181,7 +181,7 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_whenHeaderMissing_shouldDefaultToOrderList() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
         String jsonList = "[]";
         MessageProperties props = new MessageProperties();
@@ -199,7 +199,7 @@ class RabbitMqConfigTest {
 
     @Test
     void jsonMessageConverter_whenHeaderHasUntrustedPackage_shouldRejectDeserialization() {
-        MessageConverter converter = config.jsonMessageConverter(new ObjectMapper());
+        MessageConverter converter = config.jsonMessageConverter(JsonMapper.builder().build());
 
         MessageProperties props = new MessageProperties();
         props.setContentType(MessageProperties.CONTENT_TYPE_JSON);
@@ -225,7 +225,7 @@ class RabbitMqConfigTest {
         assertThat(queue.getArguments().get("x-dead-letter-exchange")).isEqualTo("test.dlx");
         assertThat(queue.getArguments().get("x-dead-letter-routing-key")).isEqualTo("test.dlq");
         assertThat(queue.getArguments().get("x-message-ttl")).isEqualTo(7200000);
-        assertThat(queue.getArguments().get("x-max-length")).isEqualTo(1000000);
+        assertThat(queue.getArguments().get("x-max-length")).isEqualTo(1000000L);
         assertThat(queue.getArguments().get("x-overflow")).isEqualTo("drop-head");
 
         Binding binding = config.marketOrdersBinding(queue, exchange);

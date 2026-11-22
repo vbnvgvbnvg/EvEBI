@@ -12,13 +12,14 @@ import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.EsiRegionSyncService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.explore.JobExplorer;
-import org.springframework.batch.core.launch.JobLauncher;
-import org.springframework.batch.core.repository.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
+import org.springframework.batch.core.launch.JobInstanceAlreadyCompleteException;
+import org.springframework.batch.core.launch.JobOperator;
+import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -50,8 +51,8 @@ import java.util.concurrent.ConcurrentMap;
 @RequestMapping("/api/v1/jobs")
 public class JobExecutionController {
 
-    private final JobLauncher asyncJobLauncher;
-    private final JobExplorer jobExplorer;
+    private final JobOperator jobOperator;
+    private final JobRepository jobRepository;
     private final Job sdeSyncJob;
     private final Job dailyMarketSummaryJob;
     private final Job orderBookLiquidityJob;
@@ -62,8 +63,8 @@ public class JobExecutionController {
     private final ConcurrentMap<String, Object> jobLaunchLocks = new ConcurrentHashMap<>();
 
     public JobExecutionController(
-            @Qualifier("asyncJobLauncher") JobLauncher asyncJobLauncher,
-            JobExplorer jobExplorer,
+            JobOperator jobOperator,
+            JobRepository jobRepository,
             @Qualifier(SdeSyncJobConfig.JOB_NAME) Job sdeSyncJob,
             @Qualifier(DailyMarketSummaryJobConfig.JOB_NAME) Job dailyMarketSummaryJob,
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
@@ -71,8 +72,8 @@ public class JobExecutionController {
             DateDimensionService dateDimensionService,
             TimeDimensionService timeDimensionService,
             BatchJobParametersFactory jobParametersFactory) {
-        this.asyncJobLauncher = asyncJobLauncher;
-        this.jobExplorer = jobExplorer;
+        this.jobOperator = jobOperator;
+        this.jobRepository = jobRepository;
         this.sdeSyncJob = sdeSyncJob;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
         this.orderBookLiquidityJob = orderBookLiquidityJob;
@@ -233,7 +234,7 @@ public class JobExecutionController {
      */
     @GetMapping("/executions/{executionId}")
     public ResponseEntity<JobExecutionDetailDto> getExecutionDetail(@PathVariable("executionId") Long executionId) {
-        JobExecution execution = jobExplorer.getJobExecution(executionId);
+        JobExecution execution = jobRepository.getJobExecution(executionId);
         if (execution == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Job execution not found for id: " + executionId);
         }
@@ -273,9 +274,9 @@ public class JobExecutionController {
         synchronized (lock) {
             ensureJobNotRunning(jobName);
             try {
-                return asyncJobLauncher.run(job, jobParameters);
-            } catch (JobExecutionAlreadyRunningException e) {
-                log.warn("Job '{}' is already running: {}", jobName, e.getMessage());
+                return jobOperator.start(job, jobParameters);
+            } catch (JobExecutionAlreadyRunningException | JobInstanceAlreadyCompleteException e) {
+                log.warn("Job '{}' is already running or completed for current parameters: {}", jobName, e.getMessage());
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
                         "Job '" + jobName + "' is currently executing", e);
             } catch (Exception e) {
@@ -287,7 +288,7 @@ public class JobExecutionController {
     }
 
     private void ensureJobNotRunning(String jobName) {
-        Set<JobExecution> running = jobExplorer.findRunningJobExecutions(jobName);
+        Set<JobExecution> running = jobRepository.findRunningJobExecutions(jobName);
         if (!running.isEmpty()) {
             List<Long> runningIds = running.stream().map(JobExecution::getId).toList();
             log.warn("Job '{}' is already running with execution id(s): {}, rejecting launch request", jobName, runningIds);

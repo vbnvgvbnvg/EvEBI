@@ -14,12 +14,14 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <maven.compiler.release>21</maven.compiler.release>
-        <spring-boot.version>3.2.4</spring-boot.version>
-        <openapi-generator.version>7.4.0</openapi-generator.version>
+        <spring-boot.version>4.2.0</spring-boot.version>
+        <openapi-generator.version>7.27.0</openapi-generator.version>
+        <querydsl.version>7.7</querydsl.version>
+        <resilience4j.version>2.4.0</resilience4j.version>
         <sonar-maven-plugin.version>5.0.0.4389</sonar-maven-plugin.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <jacoco.version>0.8.16</jacoco.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
-        <owasp-dependency-check.version>11.1.1</owasp-dependency-check.version>
+        <owasp-dependency-check.version>13.0.0</owasp-dependency-check.version>
         <owasp.failBuildOnCVSS>7.0</owasp.failBuildOnCVSS>
         <sonar.organization>vbnvgvbnvg</sonar.organization>
         <sonar.projectKey>vbnvgvbnvg_EvEBI</sonar.projectKey>

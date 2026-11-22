@@ -3,11 +3,10 @@ package com.github.serbentd.eve.batch.reaper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.StepExecution;
-import org.springframework.batch.core.explore.JobExplorer;
+import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
+import org.springframework.batch.core.step.StepExecution;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.stereotype.Component;
 
@@ -27,7 +26,6 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
 
     private static final int SHUTDOWN_PHASE = Integer.MAX_VALUE - 100;
 
-    private final JobExplorer jobExplorer;
     private final JobOperator jobOperator;
     private final JobRepository jobRepository;
     private final AdvisoryLockManager advisoryLockManager;
@@ -82,15 +80,15 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
      */
     public int stopLocallyOwnedExecutions() {
         int stoppedCount = 0;
-        for (String jobName : jobExplorer.getJobNames()) {
-            Set<JobExecution> runningExecutions = jobExplorer.findRunningJobExecutions(jobName);
+        for (String jobName : jobRepository.getJobNames()) {
+            Set<JobExecution> runningExecutions = jobRepository.findRunningJobExecutions(jobName);
             for (JobExecution execution : runningExecutions) {
                 long executionId = execution.getId();
                 if (advisoryLockManager.isLockHeldLocally(executionId)) {
                     log.warn("Signaling graceful stop for locally owned execution id: {} (job: '{}')", executionId, jobName);
                     boolean stoppedByOperator = false;
                     try {
-                        stoppedByOperator = jobOperator.stop(executionId);
+                        stoppedByOperator = jobOperator.stop(execution);
                     } catch (Exception e) {
                         log.warn("Failed to stop execution id: {} via JobOperator: {}", executionId, e.getMessage());
                     }
@@ -109,7 +107,7 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
                         JobExecution targetExecution = execution;
                         Collection<StepExecution> stepExecutions = targetExecution.getStepExecutions();
                         if (stepExecutions == null || stepExecutions.isEmpty()) {
-                            JobExecution refreshed = jobExplorer.getJobExecution(executionId);
+                            JobExecution refreshed = jobRepository.getJobExecution(executionId);
                             if (refreshed != null && refreshed.getStepExecutions() != null) {
                                 targetExecution = refreshed;
                                 stepExecutions = refreshed.getStepExecutions();
@@ -135,7 +133,7 @@ public class BatchGracefulShutdownListener implements SmartLifecycle {
                     }
 
                     if (!stoppedByOperator) {
-                        execution.setStatus(BatchStatus.STOPPING);
+                        execution.setStatus(BatchStatus.STOPPED);
                         try {
                             jobRepository.update(execution);
                         } catch (Exception e) {

@@ -2,8 +2,9 @@ package com.github.serbentd.eve.poller.config;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.boot.webtestclient.autoconfigure.AutoConfigureWebTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -28,9 +29,11 @@ class PollerSecurityIntegrationTest {
     private static final String VALID_PASSWORD = "test-password";
 
     private final WebTestClient webTestClient;
+    private final ApplicationContext applicationContext;
 
-    PollerSecurityIntegrationTest(WebTestClient webTestClient) {
+    PollerSecurityIntegrationTest(WebTestClient webTestClient, ApplicationContext applicationContext) {
         this.webTestClient = webTestClient;
+        this.applicationContext = applicationContext;
     }
 
     @Test
@@ -69,6 +72,11 @@ class PollerSecurityIntegrationTest {
                 .expectStatus().isUnauthorized();
 
         webTestClient.get().uri(HEALTH_PATH)
+                .header(API_KEY_HEADER, "")
+                .exchange()
+                .expectStatus().isUnauthorized();
+
+        mockWebTestClient().get().uri(HEALTH_PATH)
                 .header(API_KEY_HEADER, "   ")
                 .exchange()
                 .expectStatus().isUnauthorized();
@@ -116,11 +124,18 @@ class PollerSecurityIntegrationTest {
     @Test
     @DisplayName("Authenticated user without ACTUATOR or ADMIN role should receive 403 Forbidden")
     void actuatorEndpoints_withInsufficientRole_shouldReturn403() {
-        webTestClient
+        mockWebTestClient()
                 .mutateWith(SecurityMockServerConfigurers.mockUser("limited-user").roles("USER"))
                 .get().uri(HEALTH_PATH)
                 .exchange()
                 .expectStatus().isForbidden();
+    }
+
+    private WebTestClient mockWebTestClient() {
+        return WebTestClient.bindToApplicationContext(applicationContext)
+                .apply(SecurityMockServerConfigurers.springSecurity())
+                .configureClient()
+                .build();
     }
 
     private static String basicAuth(String username, String password) {

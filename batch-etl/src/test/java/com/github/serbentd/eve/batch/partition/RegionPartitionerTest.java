@@ -2,7 +2,7 @@ package com.github.serbentd.eve.batch.partition;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.batch.item.ExecutionContext;
+import org.springframework.batch.infrastructure.item.ExecutionContext;
 
 import java.util.Collections;
 import java.util.List;

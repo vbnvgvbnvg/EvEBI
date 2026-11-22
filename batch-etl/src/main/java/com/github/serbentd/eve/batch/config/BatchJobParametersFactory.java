@@ -1,8 +1,8 @@
 package com.github.serbentd.eve.batch.config;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.stereotype.Component;
 
 /**

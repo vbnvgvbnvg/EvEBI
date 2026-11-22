@@ -51,7 +51,7 @@ class OrderIngestionIntegrationTest {
                 createSampleEvent(1002L, 34L, 11.00, 100L, "snap-batch-1", now)
         );
 
-        // 1. Verify JSON serialization via configured Jackson2JsonMessageConverter
+        // 1. Verify JSON serialization via configured JacksonJsonMessageConverter
         MessageProperties properties = new MessageProperties();
         Message message = messageConverter.toMessage(events, properties);
         String jsonPayload = new String(message.getBody(), StandardCharsets.UTF_8);

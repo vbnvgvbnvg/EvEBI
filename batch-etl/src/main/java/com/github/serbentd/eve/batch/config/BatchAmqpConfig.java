@@ -1,8 +1,5 @@
 package com.github.serbentd.eve.batch.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.github.serbentd.eve.batch.job.daily.DailyMarketSummaryJobConfig;
 import com.github.serbentd.eve.batch.job.liquidity.OrderBookLiquidityJobConfig;
 import org.springframework.amqp.core.AmqpTemplate;
@@ -14,7 +11,7 @@ import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.batch.integration.partition.StepExecutionRequest;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -25,6 +22,7 @@ import org.springframework.integration.amqp.dsl.Amqp;
 import org.springframework.integration.channel.DirectChannel;
 import org.springframework.integration.dsl.IntegrationFlow;
 import org.springframework.messaging.MessageChannel;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Spring AMQP and Spring Integration configuration for Spring Batch distributed remote partitioning.
@@ -57,12 +55,11 @@ public class BatchAmqpConfig {
      * Message converter supporting Java records and {@link StepExecutionRequest} Jackson Mixin.
      */
     @Bean
-    public MessageConverter batchJsonMessageConverter(ObjectMapper objectMapper) {
-        ObjectMapper mapper = objectMapper.copy()
-                .registerModule(new JavaTimeModule())
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .addMixIn(StepExecutionRequest.class, StepExecutionRequestMixin.class);
-        return new Jackson2JsonMessageConverter(mapper, TRUSTED_PAYLOAD_PACKAGE);
+    public MessageConverter batchJsonMessageConverter(JsonMapper jsonMapper) {
+        JsonMapper mapper = jsonMapper.rebuild()
+                .addMixIn(StepExecutionRequest.class, StepExecutionRequestMixin.class)
+                .build();
+        return new JacksonJsonMessageConverter(mapper, TRUSTED_PAYLOAD_PACKAGE);
     }
 
     /**

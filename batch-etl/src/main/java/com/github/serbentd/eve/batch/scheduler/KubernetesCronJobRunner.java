@@ -10,11 +10,11 @@ import com.github.serbentd.eve.batch.service.DateDimensionService;
 import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.BatchStatus;
-import org.springframework.batch.core.Job;
-import org.springframework.batch.core.JobExecution;
-import org.springframework.batch.core.JobParameters;
-import org.springframework.batch.core.JobParametersBuilder;
-import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.batch.core.job.Job;
+import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -50,7 +50,7 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
     private static final int EXIT_SUCCESS = 0;
     private static final int EXIT_FAILURE = 1;
 
-    private final JobLauncher syncJobLauncher;
+    private final JobOperator jobOperator;
     private final Job sdeSyncJob;
     private final Job dailyMarketSummaryJob;
     private final Job orderBookLiquidityJob;
@@ -63,7 +63,7 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
     private int exitCode = EXIT_SUCCESS;
 
     public KubernetesCronJobRunner(
-            @Qualifier("jobLauncher") JobLauncher syncJobLauncher,
+            JobOperator jobOperator,
             @Qualifier(SdeSyncJobConfig.JOB_NAME) Job sdeSyncJob,
             @Qualifier(DailyMarketSummaryJobConfig.JOB_NAME) Job dailyMarketSummaryJob,
             @Qualifier(OrderBookLiquidityJobConfig.JOB_NAME) Job orderBookLiquidityJob,
@@ -72,7 +72,7 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
             DateDimensionService dateDimensionService,
             TimeDimensionService timeDimensionService,
             ConfigurableApplicationContext applicationContext) {
-        this.syncJobLauncher = syncJobLauncher;
+        this.jobOperator = jobOperator;
         this.sdeSyncJob = sdeSyncJob;
         this.dailyMarketSummaryJob = dailyMarketSummaryJob;
         this.orderBookLiquidityJob = orderBookLiquidityJob;
@@ -107,7 +107,7 @@ public class KubernetesCronJobRunner implements ApplicationRunner, ExitCodeGener
             JobParameters parameters = buildJobParameters(mode, args);
             Job targetJob = resolveJob(mode);
 
-            JobExecution execution = syncJobLauncher.run(targetJob, parameters);
+            JobExecution execution = jobOperator.start(targetJob, parameters);
             BatchStatus status = execution.getStatus();
             log.info("One-shot batch execution for mode: {} completed with status: {}", mode, status);
 
