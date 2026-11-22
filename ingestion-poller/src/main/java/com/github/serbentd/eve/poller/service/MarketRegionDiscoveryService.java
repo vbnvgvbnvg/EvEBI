@@ -1,6 +1,7 @@
 package com.github.serbentd.eve.poller.service;
 
 import com.evepipeline.esi.api.UniverseApi;
+import com.github.serbentd.eve.poller.client.EsiResilienceClient;
 import com.github.serbentd.eve.poller.config.PollerProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -24,19 +25,28 @@ public class MarketRegionDiscoveryService {
 
     private final UniverseApi universeApi;
     private final PollerProperties properties;
+    private final EsiResilienceClient esiResilienceClient;
     private volatile List<Long> marketRegions = Collections.emptyList();
 
-    public MarketRegionDiscoveryService(UniverseApi universeApi, PollerProperties properties) {
+    public MarketRegionDiscoveryService(
+            UniverseApi universeApi,
+            PollerProperties properties,
+            EsiResilienceClient esiResilienceClient
+    ) {
         this.universeApi = universeApi;
         this.properties = properties;
+        this.esiResilienceClient = esiResilienceClient;
     }
 
     /**
      * Refreshes the discovered market regions on application startup and at scheduled intervals.
      */
     @EventListener(ApplicationReadyEvent.class)
-    @Scheduled(fixedRateString = "${eve.poller.discovery.refresh-rate}")
-    public void refreshRegions() {
+    @Scheduled(
+            initialDelayString = "${eve.poller.discovery.refresh-rate}",
+            fixedRateString = "${eve.poller.discovery.refresh-rate}"
+    )
+    public synchronized void refreshRegions() {
         if (!properties.discovery().enabled()) {
             log.info("Dynamic universe region discovery is disabled; using {} static configured region(s)",
                     properties.scheduling().regions().size());
@@ -46,13 +56,13 @@ public class MarketRegionDiscoveryService {
 
         log.info("Refreshing market regions via ESI Universe API");
         try {
-            List<Long> allRegions = universeApi.getUniverseRegions(
+            List<Long> allRegions = esiResilienceClient.execute(() -> universeApi.getUniverseRegions(
                     properties.discovery().compatibilityDate(),
                     null,
                     null,
                     null,
                     null
-            ).collectList().block();
+            ).collectList()).block();
 
             if (allRegions != null && !allRegions.isEmpty()) {
                 Long minId = properties.discovery().minRegionId();

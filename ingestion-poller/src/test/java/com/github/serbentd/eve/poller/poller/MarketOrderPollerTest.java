@@ -2,11 +2,17 @@ package com.github.serbentd.eve.poller.poller;
 
 import com.evepipeline.esi.api.MarketApi;
 import com.evepipeline.esi.model.MarketsRegionIdOrdersGetInner;
+import com.github.serbentd.eve.poller.client.EsiResilienceClient;
 import com.github.serbentd.eve.poller.config.PollerProperties;
 import com.github.serbentd.eve.common.event.MarketOrderEvent;
 import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.github.serbentd.eve.poller.service.MarketRegionDiscoveryService;
 import com.github.serbentd.eve.poller.service.OrderEventPublisher;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,6 +58,8 @@ class MarketOrderPollerTest {
     private MarketRegionDiscoveryService discoveryService;
 
     private PollerProperties properties;
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+    private EsiResilienceClient esiResilienceClient;
     private MarketOrderPoller poller;
 
     @BeforeEach
@@ -62,7 +70,8 @@ class MarketOrderPollerTest {
                 Duration.ofSeconds(2),
                 Duration.ofSeconds(5),
                 DataSize.ofMegabytes(1),
-                20
+                20,
+                "esi"
         );
         PollerProperties.SchedulingProperties scheduling = new PollerProperties.SchedulingProperties(
                 List.of(THE_FORGE_REGION_ID),
@@ -81,7 +90,14 @@ class MarketOrderPollerTest {
                 COMPATIBILITY_DATE
         );
         properties = new PollerProperties(esi, scheduling, amqp, discovery);
-        poller = new MarketOrderPoller(marketApi, publisher, properties, discoveryService);
+        circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults();
+        esiResilienceClient = new EsiResilienceClient(
+                RateLimiterRegistry.ofDefaults(),
+                circuitBreakerRegistry,
+                RetryRegistry.of(RetryConfig.custom().maxAttempts(1).build()),
+                properties
+        );
+        poller = new MarketOrderPoller(marketApi, publisher, properties, discoveryService, esiResilienceClient);
     }
 
     @Test
@@ -227,7 +243,8 @@ class MarketOrderPollerTest {
                 properties.amqp(),
                 properties.discovery()
         );
-        MarketOrderPoller multiRegionPoller = new MarketOrderPoller(marketApi, publisher, multiRegionProperties, discoveryService);
+        MarketOrderPoller multiRegionPoller = new MarketOrderPoller(
+                marketApi, publisher, multiRegionProperties, discoveryService, esiResilienceClient);
 
         MarketsRegionIdOrdersGetInner forgeOrder = createSampleOrder(1001L, 34L, 15.5, 50L);
         MarketsRegionIdOrdersGetInner domainOrder = createSampleOrder(2001L, 34L, 14.0, 80L);
@@ -377,6 +394,43 @@ class MarketOrderPollerTest {
         RegionSnapshotCompletedEvent snapshot = snapshotCaptor.getValue();
         assertThat(snapshot.totalOrders()).isEqualTo(0);
         assertThat(snapshot.totalPages()).isEqualTo(1);
+    }
+
+    @Test
+    void pollAllRegions_whenCircuitBreakerIsOpen_shouldAbortRemainingRegionsEarly() {
+        circuitBreakerRegistry.circuitBreaker("esi").transitionToOpenState();
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID, DOMAIN_REGION_ID));
+
+        assertThatCode(() -> poller.pollAllRegions()).doesNotThrowAnyException();
+
+        verify(marketApi, never()).getMarketsRegionIdOrdersWithHttpInfo(
+                any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(publisher, never()).publishOrderBatch(any());
+        verify(publisher, never()).publishSnapshotCompleted(any());
+    }
+
+    @Test
+    void pollAllRegions_whenCircuitOpensMidPagination_shouldNotPublishSnapshotCompletedAndAbortCycle() {
+        MarketsRegionIdOrdersGetInner order1 = createSampleOrder(1001L, 34L, 15.5, 50L);
+        ResponseEntity<List<MarketsRegionIdOrdersGetInner>> page1Response = ResponseEntity.ok()
+                .header("X-Pages", "2")
+                .body(List.of(order1));
+
+        when(discoveryService.getMarketRegions()).thenReturn(List.of(THE_FORGE_REGION_ID, DOMAIN_REGION_ID));
+        when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(1), isNull(), isNull(), isNull(), isNull(), isNull()
+        )).thenReturn(Mono.just(page1Response));
+        when(marketApi.getMarketsRegionIdOrdersWithHttpInfo(
+                eq("all"), eq(THE_FORGE_REGION_ID), eq(COMPATIBILITY_DATE), eq(2), isNull(), isNull(), isNull(), isNull(), isNull()
+        )).thenReturn(Mono.error(CallNotPermittedException.createCallNotPermittedException(
+                circuitBreakerRegistry.circuitBreaker("esi"))));
+
+        assertThatCode(() -> poller.pollAllRegions()).doesNotThrowAnyException();
+
+        verify(publisher, times(1)).publishOrderBatch(any());
+        verify(publisher, never()).publishSnapshotCompleted(any());
+        verify(marketApi, never()).getMarketsRegionIdOrdersWithHttpInfo(
+                any(), eq(DOMAIN_REGION_ID), any(), any(), any(), any(), any(), any(), any());
     }
 
     private MarketsRegionIdOrdersGetInner createSampleOrder(Long orderId, Long typeId, Double price, Long volumeRemain) {

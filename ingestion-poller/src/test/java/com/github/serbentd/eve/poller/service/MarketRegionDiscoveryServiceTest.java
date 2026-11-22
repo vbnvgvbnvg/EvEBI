@@ -1,15 +1,25 @@
 package com.github.serbentd.eve.poller.service;
 
 import com.evepipeline.esi.api.UniverseApi;
+import com.github.serbentd.eve.poller.client.EsiResilienceClient;
+import com.github.serbentd.eve.poller.client.EsiRetryExceptionPredicate;
 import com.github.serbentd.eve.poller.config.PollerProperties;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.github.resilience4j.retry.RetryRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.util.unit.DataSize;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
@@ -51,7 +61,8 @@ class MarketRegionDiscoveryServiceTest {
                 Duration.ofSeconds(2),
                 Duration.ofSeconds(5),
                 DataSize.ofMegabytes(1),
-                20
+                20,
+                "esi"
         );
         schedulingProperties = new PollerProperties.SchedulingProperties(
                 List.of(STATIC_REGION_ID),
@@ -64,6 +75,16 @@ class MarketRegionDiscoveryServiceTest {
         );
     }
 
+    private MarketRegionDiscoveryService createService(PollerProperties properties) {
+        EsiResilienceClient resilienceClient = new EsiResilienceClient(
+                RateLimiterRegistry.ofDefaults(),
+                CircuitBreakerRegistry.ofDefaults(),
+                RetryRegistry.of(RetryConfig.custom().maxAttempts(1).build()),
+                properties
+        );
+        return new MarketRegionDiscoveryService(universeApi, properties, resilienceClient);
+    }
+
     @Test
     void refreshRegions_whenDiscoveryDisabled_shouldUseStaticConfiguredRegionsAndNeverCallUniverseApi() {
         PollerProperties.DiscoveryProperties discoveryProperties = new PollerProperties.DiscoveryProperties(
@@ -74,7 +95,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         service.refreshRegions();
 
@@ -92,7 +113,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         List<Long> esiRegions = List.of(
                 BELOW_MIN_REGION_ID,
@@ -122,7 +143,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
                 .thenReturn(Flux.just(THE_FORGE_REGION_ID));
@@ -147,7 +168,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
                 .thenReturn(Flux.error(new RuntimeException("ESI Universe outage")));
@@ -167,7 +188,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
                 .thenReturn(Flux.empty());
@@ -187,7 +208,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         // Run 1: Successful discovery
         when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
@@ -214,7 +235,7 @@ class MarketRegionDiscoveryServiceTest {
                 COMPATIBILITY_DATE
         );
         PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
-        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties);
+        MarketRegionDiscoveryService service = createService(properties);
 
         when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
                 .thenReturn(Flux.just(THE_FORGE_REGION_ID));
@@ -222,5 +243,46 @@ class MarketRegionDiscoveryServiceTest {
         List<Long> regions = service.getMarketRegions();
         assertThat(regions).containsExactly(THE_FORGE_REGION_ID);
         verify(universeApi, times(1)).getUniverseRegions(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void refreshRegions_whenTransient503Occurs_shouldRetryAndLoadRegions() {
+        PollerProperties.DiscoveryProperties discoveryProperties = new PollerProperties.DiscoveryProperties(
+                true,
+                MIN_MARKET_REGION_ID,
+                MAX_MARKET_REGION_ID,
+                Duration.ofHours(24),
+                COMPATIBILITY_DATE
+        );
+        PollerProperties properties = new PollerProperties(esiProperties, schedulingProperties, amqpProperties, discoveryProperties);
+        RetryRegistry retryRegistry = RetryRegistry.of(RetryConfig.custom()
+                .maxAttempts(3)
+                .waitDuration(Duration.ofMillis(1))
+                .retryOnException(new EsiRetryExceptionPredicate())
+                .build());
+        EsiResilienceClient resilienceClient = new EsiResilienceClient(
+                RateLimiterRegistry.ofDefaults(),
+                CircuitBreakerRegistry.ofDefaults(),
+                retryRegistry,
+                properties
+        );
+        MarketRegionDiscoveryService service = new MarketRegionDiscoveryService(universeApi, properties, resilienceClient);
+
+        WebClientResponseException transient503 = WebClientResponseException.create(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Service Unavailable",
+                HttpHeaders.EMPTY,
+                new byte[0],
+                StandardCharsets.UTF_8
+        );
+
+        when(universeApi.getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any()))
+                .thenReturn(Flux.error(transient503))
+                .thenReturn(Flux.just(DOMAIN_REGION_ID, THE_FORGE_REGION_ID));
+
+        service.refreshRegions();
+
+        assertThat(service.getMarketRegions()).containsExactly(THE_FORGE_REGION_ID, DOMAIN_REGION_ID);
+        verify(universeApi, times(2)).getUniverseRegions(eq(COMPATIBILITY_DATE), any(), any(), any(), any());
     }
 }

@@ -41,7 +41,8 @@ class OrderEventPublisherTest {
                 Duration.ofSeconds(2),
                 Duration.ofSeconds(5),
                 DataSize.ofMegabytes(1),
-                20
+                20,
+                "esi"
         );
         PollerProperties.SchedulingProperties scheduling = new PollerProperties.SchedulingProperties(
                 List.of(THE_FORGE_REGION_ID),

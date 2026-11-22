@@ -11,26 +11,39 @@ import com.github.serbentd.eve.batch.service.TimeDimensionService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
 import org.springframework.batch.core.job.JobInstance;
 import org.springframework.batch.core.job.parameters.JobParameters;
+import org.springframework.batch.core.job.parameters.JobParametersBuilder;
 import org.springframework.batch.core.launch.JobExecutionAlreadyRunningException;
 import org.springframework.batch.core.launch.JobOperator;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -338,28 +351,98 @@ class JobExecutionControllerTest {
     @DisplayName("Concurrent liquidity triggers should result in exactly one 202 and all others 409")
     void triggerLiquidity_concurrentCalls_shouldReturn202And409() throws Exception {
         int threadCount = 5;
-        java.util.concurrent.ExecutorService executor = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
-        java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-        java.util.List<java.util.concurrent.Future<Integer>> futures = new java.util.ArrayList<>();
+        JobOperator operator = mock(JobOperator.class);
+        JobRepository mockJobRepository = mock(JobRepository.class);
+        Job liquidityJob = mock(Job.class);
+        when(liquidityJob.getName()).thenReturn(OrderBookLiquidityJobConfig.JOB_NAME);
 
-        for (int i = 0; i < threadCount; i++) {
-            futures.add(executor.submit(() -> {
-                startLatch.await();
-                return mockMvc.perform(post(LIQUIDITY_URL).header(API_KEY_HEADER, API_KEY_VALUE))
-                        .andReturn().getResponse().getStatus();
-            }));
+        AtomicReference<Set<JobExecution>> runningExecutions = new AtomicReference<>(Set.of());
+        when(mockJobRepository.findRunningJobExecutions(OrderBookLiquidityJobConfig.JOB_NAME))
+                .thenAnswer(invocation -> runningExecutions.get());
+        when(operator.start(any(Job.class), any(JobParameters.class)))
+                .thenAnswer(invocation -> {
+                    Thread.sleep(20);
+                    JobExecution execution = new JobExecution(
+                            201L,
+                            new JobInstance(1L, OrderBookLiquidityJobConfig.JOB_NAME),
+                            invocation.getArgument(1)
+                    );
+                    runningExecutions.set(Set.of(execution));
+                    return execution;
+                });
+
+        JobExecutionController controller = new JobExecutionController(
+                operator, mockJobRepository, mock(Job.class), mock(Job.class), liquidityJob,
+                mock(EsiRegionSyncService.class), mock(DateDimensionService.class), mock(TimeDimensionService.class),
+                createTestJobParametersFactory()
+        );
+
+        CountDownLatch readyLatch = new CountDownLatch(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        List<Future<Integer>> futures = new ArrayList<>();
+
+        try (ExecutorService executor = Executors.newFixedThreadPool(threadCount)) {
+            for (int i = 0; i < threadCount; i++) {
+                futures.add(executor.submit(() -> {
+                    readyLatch.countDown();
+                    startLatch.await();
+                    try {
+                        ResponseEntity<JobLaunchResponseDto> response = controller.triggerLiquidity(null);
+                        return response.getStatusCode().value();
+                    } catch (ResponseStatusException e) {
+                        return e.getStatusCode().value();
+                    }
+                }));
+            }
+
+            readyLatch.await();
+            startLatch.countDown();
+            List<Integer> statuses = new ArrayList<>();
+            for (Future<Integer> future : futures) {
+                statuses.add(future.get());
+            }
+
+            assertThat(statuses).containsOnly(202, 409);
+            assertThat(statuses.stream().filter(s -> s == 202).count()).isEqualTo(1);
+            assertThat(statuses.stream().filter(s -> s == 409).count()).isEqualTo(threadCount - 1L);
+            verify(operator, times(1)).start(any(Job.class), any(JobParameters.class));
+        }
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/jobs/liquidity should return 409 while a real execution is running and 202 once completed")
+    void triggerLiquidity_whenExecutionRunningThenCompleted_shouldReturn409Then202() throws Exception {
+        JobParameters activeParams = new JobParametersBuilder()
+                .addString(OrderBookLiquidityJobConfig.SNAPSHOT_TIME_PARAM, "2026-04-12T13:00:00Z")
+                .addLong(BatchJobParametersFactory.TIMESTAMP_PARAM, System.currentTimeMillis())
+                .toJobParameters();
+        JobExecution activeExecution = jobRepository.createJobExecution(
+                OrderBookLiquidityJobConfig.JOB_NAME, activeParams);
+        activeExecution.setStatus(BatchStatus.STARTED);
+        activeExecution.setStartTime(LocalDateTime.now());
+        jobRepository.update(activeExecution);
+
+        try {
+            mockMvc.perform(post(LIQUIDITY_URL)
+                            .header(API_KEY_HEADER, API_KEY_VALUE)
+                            .param("snapshotTime", "2026-04-12T13:05:00Z"))
+                    .andExpect(status().isConflict());
+        } finally {
+            activeExecution.setStatus(BatchStatus.COMPLETED);
+            activeExecution.setEndTime(LocalDateTime.now());
+            jobRepository.update(activeExecution);
         }
 
-        startLatch.countDown();
-        java.util.List<Integer> statuses = new java.util.ArrayList<>();
-        for (java.util.concurrent.Future<Integer> future : futures) {
-            statuses.add(future.get());
-        }
-        executor.shutdown();
+        MvcResult result = mockMvc.perform(post(LIQUIDITY_URL)
+                        .header(API_KEY_HEADER, API_KEY_VALUE)
+                        .param("snapshotTime", "2026-04-12T13:10:00Z"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.jobName").value(OrderBookLiquidityJobConfig.JOB_NAME))
+                .andExpect(jsonPath("$.jobExecutionId").isNumber())
+                .andReturn();
 
-        assertThat(statuses).contains(202);
-        assertThat(statuses).containsOnly(202, 409);
-        long count202 = statuses.stream().filter(s -> s == 202).count();
-        assertThat(count202).isEqualTo(1);
+        JobLaunchResponseDto launched = jsonMapper.readValue(
+                result.getResponse().getContentAsString(), JobLaunchResponseDto.class);
+        assertThat(launched.jobExecutionId()).isNotEqualTo(activeExecution.getId());
     }
 }

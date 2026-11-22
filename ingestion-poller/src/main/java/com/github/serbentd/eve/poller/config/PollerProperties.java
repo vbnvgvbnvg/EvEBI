@@ -35,6 +35,7 @@ public record PollerProperties(
      * @param readTimeout             HTTP response read timeout
      * @param maxInMemorySize         maximum in-memory codec buffer size for response decoding
      * @param minErrorRemainThreshold minimum remaining error budget before backing off
+     * @param resilienceInstance      Resilience4j configuration instance name for ESI calls
      */
     public record EsiProperties(
             @NotBlank String baseUrl,
@@ -42,7 +43,8 @@ public record PollerProperties(
             @NotNull Duration connectTimeout,
             @NotNull Duration readTimeout,
             @NotNull DataSize maxInMemorySize,
-            @Positive int minErrorRemainThreshold
+            @Positive int minErrorRemainThreshold,
+            @NotBlank String resilienceInstance
     ) {
     }
 
