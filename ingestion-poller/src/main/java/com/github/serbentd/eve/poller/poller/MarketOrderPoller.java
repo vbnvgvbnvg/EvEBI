@@ -2,11 +2,13 @@ package com.github.serbentd.eve.poller.poller;
 
 import com.evepipeline.esi.api.MarketApi;
 import com.evepipeline.esi.model.MarketsRegionIdOrdersGetInner;
+import com.github.serbentd.eve.poller.client.EsiResilienceClient;
 import com.github.serbentd.eve.poller.config.PollerProperties;
 import com.github.serbentd.eve.common.event.MarketOrderEvent;
 import com.github.serbentd.eve.common.event.RegionSnapshotCompletedEvent;
 import com.github.serbentd.eve.poller.service.MarketRegionDiscoveryService;
 import com.github.serbentd.eve.poller.service.OrderEventPublisher;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -36,17 +38,20 @@ public class MarketOrderPoller {
     private final OrderEventPublisher publisher;
     private final PollerProperties properties;
     private final MarketRegionDiscoveryService discoveryService;
+    private final EsiResilienceClient esiResilienceClient;
 
     public MarketOrderPoller(
             MarketApi marketApi,
             OrderEventPublisher publisher,
             PollerProperties properties,
-            MarketRegionDiscoveryService discoveryService
+            MarketRegionDiscoveryService discoveryService,
+            EsiResilienceClient esiResilienceClient
     ) {
         this.marketApi = marketApi;
         this.publisher = publisher;
         this.properties = properties;
         this.discoveryService = discoveryService;
+        this.esiResilienceClient = esiResilienceClient;
     }
 
     /**
@@ -63,6 +68,10 @@ public class MarketOrderPoller {
         for (Long regionId : regions) {
             try {
                 pollRegion(regionId);
+            } catch (CallNotPermittedException e) {
+                log.warn("ESI circuit breaker is OPEN while polling region {}. Aborting remaining regions for this cycle.",
+                        regionId, e);
+                break;
             } catch (Exception e) {
                 log.error("Failed to poll market orders for region {}", regionId, e);
             }
@@ -110,9 +119,9 @@ public class MarketOrderPoller {
     }
 
     private ResponseEntity<List<MarketsRegionIdOrdersGetInner>> fetchPage(Long regionId, int page) {
-        return marketApi.getMarketsRegionIdOrdersWithHttpInfo(
+        return esiResilienceClient.execute(() -> marketApi.getMarketsRegionIdOrdersWithHttpInfo(
                 ORDER_TYPE_ALL, regionId, properties.discovery().compatibilityDate(), page, null, null, null, null, null
-        ).block();
+        )).block();
     }
 
     private int extractTotalPages(ResponseEntity<List<MarketsRegionIdOrdersGetInner>> response, Long regionId) {

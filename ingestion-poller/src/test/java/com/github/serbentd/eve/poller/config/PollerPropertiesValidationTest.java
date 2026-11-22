@@ -43,7 +43,8 @@ class PollerPropertiesValidationTest {
                 null,
                 null,
                 null,
-                -5
+                -5,
+                "   "
         );
         PollerProperties properties = new PollerProperties(
                 invalidEsi,
@@ -63,7 +64,8 @@ class PollerPropertiesValidationTest {
                 "esi.connectTimeout",
                 "esi.readTimeout",
                 "esi.maxInMemorySize",
-                "esi.minErrorRemainThreshold"
+                "esi.minErrorRemainThreshold",
+                "esi.resilienceInstance"
         );
     }
 
@@ -194,7 +196,8 @@ class PollerPropertiesValidationTest {
                 Duration.ofSeconds(10),
                 Duration.ofSeconds(30),
                 DataSize.ofMegabytes(16),
-                20
+                20,
+                "esi"
         );
     }
 

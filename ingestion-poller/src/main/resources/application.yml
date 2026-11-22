@@ -24,6 +24,7 @@ eve:
       read-timeout: ${EVE_ESI_READ_TIMEOUT:30s}
       max-in-memory-size: ${EVE_ESI_MAX_IN_MEMORY_SIZE:16MB}
       min-error-remain-threshold: ${EVE_ESI_ERROR_THRESHOLD:20}
+      resilience-instance: ${EVE_ESI_RESILIENCE_INSTANCE:esi}
     scheduling:
       regions:
         - ${EVE_POLLER_REGION_ID:10000002}
@@ -63,3 +64,47 @@ management:
           include: livenessState
         readiness:
           include: readinessState, rabbit
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+
+resilience4j:
+  ratelimiter:
+    instances:
+      esi:
+        limit-for-period: ${EVE_ESI_RL_LIMIT_FOR_PERIOD:20}
+        limit-refresh-period: ${EVE_ESI_RL_REFRESH_PERIOD:1s}
+        timeout-duration: ${EVE_ESI_RL_TIMEOUT_DURATION:5s}
+        register-health-indicator: true
+        allow-health-indicator-to-fail: false
+  circuitbreaker:
+    instances:
+      esi:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: ${EVE_ESI_CB_SLIDING_WINDOW_SIZE:20}
+        minimum-number-of-calls: ${EVE_ESI_CB_MIN_CALLS:10}
+        failure-rate-threshold: ${EVE_ESI_CB_FAILURE_RATE_THRESHOLD:50}
+        permitted-number-of-calls-in-half-open-state: ${EVE_ESI_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${EVE_ESI_CB_WAIT_DURATION:30s}
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+        allow-health-indicator-to-fail: false
+        record-failure-predicate: com.github.serbentd.eve.poller.client.EsiCircuitBreakerFailurePredicate
+        ignore-exceptions:
+          - io.github.resilience4j.ratelimiter.RequestNotPermitted
+  retry:
+    instances:
+      esi:
+        max-attempts: ${EVE_ESI_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${EVE_ESI_RETRY_WAIT_DURATION:1s}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${EVE_ESI_RETRY_BACKOFF_MULTIPLIER:2.0}
+        exponential-max-wait-duration: ${EVE_ESI_RETRY_MAX_WAIT_DURATION:10s}
+        enable-randomized-wait: true
+        randomized-wait-factor: ${EVE_ESI_RETRY_RANDOMIZED_FACTOR:0.5}
+        retry-exception-predicate: com.github.serbentd.eve.poller.client.EsiRetryExceptionPredicate
+        ignore-exceptions:
+          - io.github.resilience4j.circuitbreaker.CallNotPermittedException
+          - io.github.resilience4j.ratelimiter.RequestNotPermitted

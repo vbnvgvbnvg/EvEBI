@@ -114,8 +114,8 @@ Eve-BI is an event-driven data pipeline designed to ingest, process, store, and 
   - [x] **Platform & Dependency Modernization (Spring Boot 4.x Upgrade):**
     - [x] Upgrade Spring Boot (`3.2.4` → `4.2.0`) and remediate High/Critical CVEs surfaced by `-Psecurity-audit` (Tomcat, Netty, Spring Framework, Jackson, PostgreSQL driver, RabbitMQ AMQP client, Log4j).
     - [x] Migrate impacted integrations (Jackson 3, Spring Batch 6, OpenFeign QueryDSL 7 / Hibernate 7, OpenAPI Generator 7.27 bindings, and modular test slices) with full regression verification.
-  - [ ] **ESI Client Resilience Wiring (Resilience4j Follow-Up):**
-    - [ ] Wire Resilience4j `RateLimiter`, `CircuitBreaker`, and `Retry` operators (via `resilience4j-spring-boot4` / `resilience4j-reactor`) into `ingestion-poller` external ESI calls (`MarketOrderPoller`, `MarketRegionDiscoveryService`) with externalized YAML configuration and unit/integration tests.
+  - [x] **ESI Client Resilience Wiring (Resilience4j Follow-Up):**
+    - [x] Wire Resilience4j `RateLimiter`, `CircuitBreaker`, and `Retry` operators (via `resilience4j-spring-boot4` / `resilience4j-reactor`) into `ingestion-poller` external ESI calls (`MarketOrderPoller`, `MarketRegionDiscoveryService`) with externalized YAML configuration and unit/integration tests.
   - [ ] **Containerized Integration Testing & CI/CD:**
     - [ ] Configure optional Testcontainers profile for real-broker RabbitMQ (with auth/vhost) and true PostgreSQL integration tests (requiring Docker / OrbStack).
     - [ ] Set up CI/CD pipeline (GitHub Actions) with automated containerized service test execution and SonarCloud quality gates.

@@ -32,7 +32,8 @@ class EsiErrorBudgetFilterTest {
                 Duration.ofSeconds(2),
                 Duration.ofSeconds(5),
                 DataSize.ofMegabytes(1),
-                THRESHOLD
+                THRESHOLD,
+                "esi"
         );
         PollerProperties.SchedulingProperties scheduling = new PollerProperties.SchedulingProperties(
                 List.of(10000002L),
